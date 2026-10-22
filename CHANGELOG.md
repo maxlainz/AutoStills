@@ -3,6 +3,12 @@
 Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado: [SemVer](https://semver.org/lang/es/). Categorías: Añadido · Cambiado · Corregido · Decidido · Medido · Eliminado.
 
 ## [Unreleased]
+### Corregido
+- El último export no se encontraba: el fichero estaba en una subcarpeta que la API no da (H6), y `MarkIn` no es el rango renderizado (H7). Ahora se busca en subcarpetas y el inicio se lee del timecode del `.mov`; ya no hace falta que el render cubra todo el timeline (bitácora 03).
+
+### Cambiado
+- «Guardar ajustes como predeterminados» pasa a un botón «⋯» en la esquina.
+
 ### Añadido
 - Ventana v2 (D18): tres pasos, paso en curso, botón «Analizar». Marcadores en el timeline como salida por defecto y se respetan al relanzar (D20). De 0 a X stills por plano, uno por encuadre, con descarte de planos cortos o blandos (D19). Nombre «REC TC · CLIP» (D21). «Guardar como predeterminado» (D22).
 - Ventana de Resolve `AutoStills.py` (D15, D17): preset, stills por plano, pistas, todo o selección, fuente (último export o muestreo), marcadores, álbum; comprueba el export plano a plano, mezcla export y muestreo, hace Grab Still con etiqueta «CLIP · TC» y deja cabezal y página como estaban.
@@ -21,6 +27,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado
 - Modelos de decisión JEV (TypeSafe y AutoTrust) como posible juez final: `docs/investigacion.md` §6.
 
 ### Medido
+- H8: OpenCV decodifica el render H.265 10 bits 1600×1080 a 2 ms por frame (bitácora 03).
 - H5: OpenCV decodifica ProRes 4444 2K a 3,5 ms/frame; Vision 28 ms/frame a 1600×1080; 88 frames reales en 4,5 s (bitácora 02).
 - H1: la miniatura de la Color page es fija por clip y de 576×324. H2: `ExportCurrentFrameAsStill` da el frame graduado a resolución de timeline en ~0,5 s, sin frames atrasados (bitácora 01).
 - H3: el frame exportado es exactamente el del cabezal; frame fuente = `GetLeftOffset()` + (frame − `GetStart()`). H4: ~0,5 s por frame, que se van en mover el cabezal; intercalar planos no ayuda (bitácora 01).

@@ -32,18 +32,47 @@ def test_repeated_media_and_markers():
 
 
 def test_pick_export():
-    jobs = [{"TimelineName": "T", "status": "Complete", "RenderMode": "Single clip", "MarkIn": 0, "MarkOut": 99,
-             "TargetDir": "/r", "OutputFilename": "old.mov"},
-            {"TimelineName": "T", "status": "Complete", "RenderMode": "Single clip", "MarkIn": 0, "MarkOut": 99,
-             "TargetDir": "/r", "OutputFilename": "new.mov"},
-            {"TimelineName": "T", "status": "Complete", "RenderMode": "Single clip", "MarkIn": 10, "MarkOut": 99,
-             "TargetDir": "/r", "OutputFilename": "partial.mov"},
-            {"TimelineName": "T", "status": "Failed", "RenderMode": "Single clip", "MarkIn": 0, "MarkOut": 99,
-             "TargetDir": "/r", "OutputFilename": "failed.mov"}]
-    times = {"/r/old.mov": 1, "/r/new.mov": 2, "/r/partial.mov": 3, "/r/failed.mov": 4}
-    assert A.pick_export(jobs, "T", 0, 100, exists=lambda p: True, mtime=times.get) == ("/r/new.mov", 0)
-    assert A.pick_export(jobs, "T", 0, 100, exists=lambda p: p != "/r/new.mov", mtime=times.get) == ("/r/old.mov", 0)
-    assert A.pick_export(jobs, "Otro", 0, 100, exists=lambda p: True, mtime=times.get) is None
+    def job(name, status="Complete", mode="Single clip", tl="T"):
+        return {"TimelineName": tl, "status": status, "RenderMode": mode, "TargetDir": "/r", "OutputFilename": name,
+                "MarkIn": 90000}  # MarkIn no es el rango renderizado (bitácora 03): no se usa
+    jobs = [job("old.mov"), job("new.mov"), job("failed.mov", status="Failed"), job("clips.mov", mode="Individual clips")]
+    times = {"/r/sub/old.mov": 1, "/r/sub/new.mov": 2, "/r/sub/failed.mov": 3, "/r/sub/clips.mov": 4}
+    locate = lambda d, n: f"{d}/sub/{n}"  # noqa: E731 — el fichero está en una subcarpeta que la API no da
+    assert A.pick_export(jobs, "T", 89800, 25, locate, times.get, lambda p: (89800, 25)) == ("/r/sub/new.mov", 89800)
+    assert A.pick_export(jobs, "T", 89800, 25, locate, times.get, lambda p: None) == ("/r/sub/new.mov", 89800)
+    assert A.pick_export(jobs, "T", 89800, 25, locate, times.get, lambda p: (90000, 24))[1] == 89800  # otro fps
+    assert A.pick_export(jobs, "T", 0, 25, lambda d, n: None, times.get) is None
+    assert A.pick_export(jobs, "Otro", 0, 25, locate, times.get) is None
+
+
+def _atom(typ, body):
+    return (8 + len(body)).to_bytes(4, "big") + typ + body
+
+
+def test_mov_start_frame(tmp_path):
+    # .mov mínimo con una pista tmcd: el primer sample (en mdat) es el número de frame del timecode
+    entry = b"tmcd" + bytes(6) + (1).to_bytes(2, "big") + bytes(4) + bytes(4) + (25000).to_bytes(4, "big") \
+        + (1000).to_bytes(4, "big") + bytes([25]) + bytes(3)
+    stsd = _atom(b"stsd", bytes(4) + (1).to_bytes(4, "big") + (4 + len(entry)).to_bytes(4, "big") + entry)
+    mdat = _atom(b"mdat", (89800).to_bytes(4, "big"))
+    def build(offset):
+        stco = _atom(b"stco", bytes(4) + (1).to_bytes(4, "big") + offset.to_bytes(4, "big"))
+        trak = _atom(b"trak", _atom(b"mdia", _atom(b"minf", _atom(b"stbl", stsd + stco))))
+        return _atom(b"ftyp", b"qt  ") + _atom(b"moov", trak)
+    head = build(0)
+    data = build(len(head) + 8) + mdat
+    p = tmp_path / "t.mov"
+    p.write_bytes(data)
+    assert A.mov_start_frame(str(p)) == (89800, 25)
+    (tmp_path / "x.mov").write_bytes(b"no es un mov")
+    assert A.mov_start_frame(str(tmp_path / "x.mov")) is None
+
+
+def test_find_file(tmp_path):
+    (tmp_path / "WIP").mkdir()
+    (tmp_path / "WIP" / "a.mov").write_bytes(b"")
+    assert A.find_file(str(tmp_path), "a.mov") == str(tmp_path / "WIP" / "a.mov")
+    assert A.find_file(str(tmp_path), "b.mov") is None and A.find_file("", "a.mov") is None
 
 
 def test_sample_frames():
