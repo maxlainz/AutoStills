@@ -1,0 +1,39 @@
+# Entorno local
+.venv/
+venv/
+.env
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+# Modelos descargados (nunca se versionan)
+models/
+*.onnx
+*.mlmodel
+*.mlpackage
+# Material del owner / del estudio (ver .claude/rules/repo-publico.md)
+scripts/leak-patterns.local.txt
+samples/*
+!samples/README.md
+*.mov
+*.mxf
+*.mp4
+*.braw
+*.r3d
+*.exr
+*.dpx
+*.tif
+*.tiff
+*.jpg
+*.jpeg
+*.png
+*.drp
+*.dra
+*.drx
+# Claude Code
+.claude/worktrees/
+.claude/settings.local.json
+# macOS
+.DS_Store
+._*
