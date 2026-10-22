@@ -71,21 +71,21 @@ def test_signal_that_does_not_apply_does_not_subtract():
 
 
 def _write_video(path, imgs, fps=25):
-    vw = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (imgs[0].shape[1], imgs[0].shape[0]))
+    vw = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*"MJPG"), fps, (imgs[0].shape[1], imgs[0].shape[0]))
     for im in imgs:
         vw.write(im)
     vw.release()
 
 
 def test_worker_picks_sharpest_frame_from_video(tmp_path):
-    # plano A (frames 1000–1029): desenfocado salvo el 1017; plano B (1030–1059): quemado salvo una ventana
+    # plano A (frames 1000–1029): un pase de foco que clava en el 1017; plano B (1030–1059): quemado salvo una ventana
     # bien expuesta del 1042 al 1046
-    a = [blurred(0 if i == 17 else 2.5) for i in range(30)]
+    a = [blurred(0.4 * abs(i - 17)) for i in range(30)]
     gray = cv2.cvtColor(cv2.normalize(cv2.cvtColor(PATTERN, cv2.COLOR_BGR2GRAY), None, 0, 235, cv2.NORM_MINMAX),
                         cv2.COLOR_GRAY2BGR)
     b = [np.clip(gray.astype(int) + (0 if abs(i - 14) <= 2 else 90), 0, 255).astype(np.uint8) for i in range(30)]
-    _write_video(tmp_path / "export.mp4", a + b)
-    job = {"source": "video", "video": str(tmp_path / "export.mp4"), "video_first_frame": 1000,
+    _write_video(tmp_path / "export.avi", a + b)
+    job = {"source": "video", "video": str(tmp_path / "export.avi"), "video_first_frame": 1000,
            "shots": [{"id": "A", "start": 1000, "end": 1030}, {"id": "B", "start": 1030, "end": 1060}],
            "preset": "gallery", "n": 1}
     res = worker.run(job)
