@@ -29,7 +29,9 @@ Python: Resolve 21.1 trae **su propio Python 3.14** (`ResolvePython`, sin `pip`)
 | **B. Render de un proxy** (540p H.264/ProRes Proxy del timeline) y análisis del fichero | Cualquier códec, con grade, frames 1:1 con el timeline, resolución suficiente para caras | Un render previo (minutos en timelines largos); el análisis necesita un decodificador (OpenCV/ffmpeg) |
 | **C. Leer el media original** con ffmpeg/OpenCV | Sin render | **No decodifica BRAW, R3D ni ARRIRAW**; sin grade; rutas de red |
 
-Recomendación: **B** como camino principal, **A** a medir el primer día (si es rápido y la miniatura es usable, simplifica mucho la instalación). **C** descartado.
+Recomendación inicial: B como camino principal, A a medir y C descartado.
+
+**Medido el 2026-10-22 (bitácora 01, D13):** A no sirve, porque la miniatura es fija por clip y de 576×324. Hay un cuarto camino, que es el elegido: **D. `Project.ExportCurrentFrameAsStill`** frame a frame. Da el frame graduado a resolución de timeline, en ~0,5 s, sin render y sin tocar la Gallery.
 
 ## 3. Señales para puntuar un frame
 
