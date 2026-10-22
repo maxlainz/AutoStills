@@ -9,7 +9,7 @@ Script para **DaVinci Resolve Studio** que elige y captura automáticamente el m
 CLAUDE.md              este router
 .claude/rules/         normas (una por archivo)        .claude/skills/   release · obsidian-vault
 .claude/settings.json  hooks: pull + issues al arrancar · bloqueo de rutas al escribir · bloqueo de commit en main · push al cerrar
-docs/decisiones.md     ADRs D1–D15                      docs/bitacora/    una entrada por sesión (00 arranque · 01 medida)
+docs/decisiones.md     ADRs D1–D16                      docs/bitacora/    una entrada por sesión (00 arranque · 01 medida)
 docs/investigacion.md  API de Resolve, caminos para obtener frames, señales, precedentes, stack candidato, JEV
 docs/criterios.md      los 20 criterios de selección, cómo medirlos y presets
 docs/roadmap.md        versiones previstas
@@ -53,8 +53,8 @@ make ci      # leak-check + lint + test — el gate de cada commit
 ```
 
 ## Estado y siguiente paso
-- **Estado (2026-10-22, bitácora 01)**: repo creado con el método de la familia y publicado con `main` protegida (D3, D12); investigación hecha; entrevista de alcance hecha (D6–D11: varios usos con presets, cuatro criterios con la estética experimental, álbum de Gallery, solo Mac + Resolve Studio 21.1+, 1 still por plano ajustable, instalador de un paso con uv); medido cómo sacar los frames → `ExportCurrentFrameAsStill` (D13, bitácora 01); brainstorming de criterios: los 20 entran (D14, `docs/criterios.md`); ventana aprobada (D15); investigados los modelos JEV (`docs/investigacion.md` §6); sin código.
-- **Después**: prueba de pesos contra stills elegidos por el owner → comprobar que no hay desfase de frame → v0.1.0.
+- **Estado (2026-10-22, bitácora 01)**: repo creado con el método de la familia y publicado con `main` protegida (D3, D12); investigación hecha; entrevista de alcance hecha (D6–D11: varios usos con presets, cuatro criterios con la estética experimental, álbum de Gallery, solo Mac + Resolve Studio 21.1+, 1 still por plano ajustable, instalador de un paso con uv); medido cómo sacar los frames → `ExportCurrentFrameAsStill` (D13, bitácora 01); brainstorming de criterios: los 20 entran (D14, `docs/criterios.md`); ventana aprobada (D15); JEV a explorar en el futuro sobre una preselección (D16); sin desfase de frame (H3) y suelo de ~0,5 s/frame (H4); sin código.
+- **Después**: prueba de pesos contra stills elegidos por el owner · código de puntuación con tests e `install.command` → v0.1.0.
 
 ## Pendiente del owner (2026-10-22)
 - Área del vault y nota de proyecto `AutoStills`.

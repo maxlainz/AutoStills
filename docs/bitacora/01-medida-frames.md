@@ -1,6 +1,6 @@
 # 01 — Medida: cómo sacar los frames de Resolve (2026-10-22)
 
-**TL;DR.** La miniatura de la Color page no sirve: es fija por clip y de 576×324 (H1). `Project.ExportCurrentFrameAsStill` sí: exporta el frame del cabezal **graduado y a resolución de timeline**, desde la Edit page, sin tocar el proyecto ni la Gallery. Tarda ~0,5 s por frame dentro de un plano y no da frames atrasados (H2). Decisión: D13.
+**TL;DR.** Primera tanda: la miniatura de la Color page no sirve: es fija por clip y de 576×324 (H1). `Project.ExportCurrentFrameAsStill` sí: exporta el frame del cabezal **graduado y a resolución de timeline**, desde la Edit page, sin tocar el proyecto ni la Gallery. Tarda ~0,5 s por frame dentro de un plano y no da frames atrasados (H2). Decisión: D13. Segunda tanda: el frame exportado es exactamente el del cabezal (H3), y el coste de ~0,5 s está en mover el cabezal, no en exportar, y no se puede esquivar cambiando el orden (H4).
 
 Medido en un proyecto real del owner (Resolve Studio 21.1.0.17, timeline de 1600×1080 a 25 fps, 50 clips en V1, ProRes 4444 a 2048×1152) con el MCP de Resolve (`run_script`). Solo lectura: se movió el cabezal y, en las pruebas de la miniatura, se cambió a la Color page; al final de cada prueba se restauraron la página y el cabezal. Los frames de prueba se escribieron en una carpeta temporal fuera del repo y se borraron.
 
@@ -24,7 +24,25 @@ Medido en un proyecto real del owner (Resolve Studio 21.1.0.17, timeline de 1600
 - Coste estimado para un timeline de 50 planos con 10 muestras por plano: ~4 min. Es viable, y además el owner aclaró que el objetivo es quitarse el rato de elegir el still a mano, no ir rápido.
 - Sin verificar: que el frame exportado sea exactamente el del cabezal (sin desfase de un frame); que respete el viewer en bypass o con un wipe.
 
+## Segunda tanda (con permiso del owner, mismo proyecto, solo lectura)
+
+### Predicciones
+- Desfase entre el frame exportado y el del cabezal: 0 frames.
+- Los ~500 ms se van en exportar, no en mover el cabezal.
+
+### H3 — El frame exportado es exactamente el del cabezal
+- Método: 25 exports alrededor de 5 cortes (los dos últimos frames del plano A y los tres primeros del B). Cada uno se compara con los frames fuente ±3 del `.mov` (ProRes 4444, leído con ffmpeg). La comparación es una correlación de rangos de luma a 192×130, que aguanta el grade.
+- Con la correspondencia **frame fuente = `GetLeftOffset()` + (frame de timeline − `GetStart()`)**, el mejor candidato está en desfase 0 en 24 de 25. El otro (91743) es un empate en un plano estático (0,944 frente a 0,944). En los planos con movimiento la diferencia es clara (0,997 frente a 0,969).
+- En los cortes, el primer frame del plano B es del B y el último del A es del A.
+- **`GetSourceStartFrame()` puede ser un frame menor que `GetLeftOffset()`** (p. ej. 438 frente a 439; parece un redondeo de subframes). Para calcular frames fuente se usa `GetLeftOffset()`.
+- **Predicción cumplida.**
+
+### H4 — El coste está en mover el cabezal, y es un suelo de ~0,5 s por frame
+- Dentro de un plano: `SetCurrentTimecode` tarda ~470 ms y `ExportCurrentFrameAsStill` ~25 ms (8 muestras). Dos exports seguidos del mismo frame sin mover: 27 y 25 ms.
+- Recorrer 6 planos × 4 frames en orden secuencial: 480 ms/frame; en orden intercalado (un frame de cada plano por vuelta): 499 ms/frame. **No ayuda.** Los saltos baratos de la primera tanda (35–60 ms) venían después de una pausa de 1 s: Resolve parece cobrar ~0,5 s por cada frame que muestra, toque el que toque.
+- **Predicción fallida** (el coste no está en exportar). Consecuencia: el presupuesto es ~0,5 s × frames muestreados; elegir bien cuántos y cuáles importa más que el orden.
+
 ## Siguiente paso
-1. Boceto de la ventana y de los presets (D6) para que el owner lo apruebe.
-2. Verificar que no hay desfase de frame (exportar frames consecutivos de un contador o de un clip de prueba).
-3. Probar si los ~500 ms dentro de un plano se pueden bajar (exportar en orden, otro formato, otra página). No bloquea.
+1. Prueba de pesos: el owner elige a mano el still de unos planos y se compara.
+2. Empezar el código que no necesita Resolve: puntuación de frames con tests e `install.command`.
+3. (No bloquea) Ver si alguna opción de Resolve (calidad del viewer, proxies, render cache) baja el suelo de H4.
