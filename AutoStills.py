@@ -378,6 +378,7 @@ def gui(resolve, bmd):
 
     def run(ev):
         st["log"] = []
+        st.pop("missed", None)
         respect = itm["Respect"].Checked
         items, st["objs"] = read_items(tl, tracks(), itm["Scope"].CurrentIndex == 1)
         shots = visible_shots(items, color() if respect else None, read_tl_markers(tl))
@@ -465,6 +466,28 @@ def gui(resolve, bmd):
             st["grabbed"] = 0
             finish()
 
+    def grab_from(s, f):
+        """Grab Still del clip del plano, no del que tenga encima: el still es del clip que está «current» en la Color
+        page y la API no deja elegirlo. Si el current es otro, se desactivan un momento los clips de las pistas de
+        encima que lo tapan en ese frame y se vuelven a activar pase lo que pase (bitácora 03)."""
+        tl.SetCurrentTimecode(tc(f, fps))
+        cur = tl.GetCurrentVideoItem()
+        if cur and cur.GetUniqueId() == s["uid"]:
+            return tl.GrabStill()
+        track = int(s["id"].split(":")[0])
+        off = []
+        try:
+            for t in range(track + 1, n_tracks + 1):
+                for it in tl.GetItemListInTrack("video", t) or []:
+                    if it.GetStart() <= f < it.GetEnd() and it.GetClipEnabled() and it.SetClipEnabled(False):
+                        off.append(it)
+            tl.SetCurrentTimecode(tc(f, fps))
+            cur = tl.GetCurrentVideoItem()
+            return tl.GrabStill() if cur and cur.GetUniqueId() == s["uid"] else None
+        finally:
+            for it in off:
+                it.SetClipEnabled(True)
+
     def finish():
         timer.Stop()
         restore()
@@ -479,6 +502,9 @@ def gui(resolve, bmd):
             if itm["OutGallery"].Checked:
                 out.append(f"{st['grabbed']} stills en «{itm['Album'].Text}»")
             say("✓ " + " · ".join(out))
+            missed = st.pop("missed", [])
+            if missed:
+                say(f"  {len(missed)} stills sin sacar (no se pudo poner su clip como actual): " + ", ".join(missed))
             via, flags = st["via"], {r["id"]: r["flags"] for r in res.get("shots", [])}
             names = {s["id"]: s["name"] for s in st["shots"]}
             for v, text in (("export", "analizados con el export"), ("muestreo", "analizados por muestreo"),
@@ -529,11 +555,12 @@ def gui(resolve, bmd):
             elif st["phase"] == "grab":
                 if st["queue"]:
                     s, f = st["queue"].pop(0)
-                    tl.SetCurrentTimecode(tc(f, fps))
-                    still = tl.GrabStill()
+                    still = grab_from(s, f)
                     if still:
                         st["album"].SetLabel(still, still_label(s["name"], f, fps))
                         st["grabbed"] += 1
+                    else:
+                        st.setdefault("missed", []).append(still_label(s["name"], f, fps))
                     step("Marcar y añadir", f"Gallery {st['total'] - len(st['queue'])}/{st['total']}")
                 else:
                     finish()

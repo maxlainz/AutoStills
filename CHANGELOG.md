@@ -4,6 +4,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado
 
 ## [Unreleased]
 ### Corregido
+- Grab Still con un clip encima sacaba el still del clip de arriba. Ahora se comprueba el clip current y, si hace falta, se desactivan un momento los clips que lo tapan (H13).
 - El plano largo del final se quedaba sin still por un `IndexError` en `select.framings` (H9).
 - Un plano que compartía unos frames del mismo clip se daba por repetido; ahora hace falta solapar más de la mitad (H10).
 - Los encuadres se miden por el movimiento de la cámara (flujo óptico), no por la miniatura; un pull-back en una escena oscura ya da dos encuadres. El recorte de bordes del plano se limita a 25 frames (H11).
