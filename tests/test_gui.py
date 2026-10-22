@@ -94,3 +94,10 @@ def test_settings_roundtrip(tmp_path):
     assert A.load_settings(p) == {}
     A.save_settings({"min": 0, "max": 3, "tracks": [1, 2]}, p)
     assert A.load_settings(p) == {"min": 0, "max": 3, "tracks": [1, 2]}
+
+
+def test_elide():
+    name = "BarraDunBar_BarraDunBar-WIP_rec709_ST20_h265_10b_1600x1080_20261022.mov"
+    out = A.elide(name)
+    assert len(out) <= 44 and out.startswith("BarraDunBar_") and out.endswith("20261022.mov")
+    assert A.elide("corto.mov") == "corto.mov"

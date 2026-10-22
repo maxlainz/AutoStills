@@ -46,5 +46,10 @@ Se reprodujo el análisis fuera de Resolve: el render del timeline y los 49 plan
   - ventana de 680×760 como mínimo.
 - No se pudo hacer la captura desde el MCP: la ventana no aparece en la pantalla capturada. Hace falta una captura del owner.
 
+## Ventana, segunda tanda (capturas del owner pendientes)
+- «Analizar» se solapaba: la fila de botones tiene ahora altura propia.
+- «Guardar como predeterminado» se solapaba y aparecía en otra fila: ahora el «⋯» se convierte en ese botón en el mismo sitio.
+- El nombre del render se salía de la ventana: un nombre de fichero no salta de línea, así que se acorta por el medio (`elide`) y el completo va en el tooltip.
+
 ## Siguiente paso
 - Que el owner relance la prueba: el export ya aparece. Siguen pendientes los supuestos de la bitácora 02: la posición de los marcadores, Grab Still en la Color page y el umbral de la comprobación.

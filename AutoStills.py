@@ -155,6 +155,11 @@ def sample_frames(start, end, k=SAMPLES_PER_SHOT):
     return sorted({a + round(i * (b - 1 - a) / (k - 1)) for i in range(k)})
 
 
+def elide(text, n=44):
+    """Acorta por el medio: «BarraDunBar_BarraDunB…_20261022.mov»."""
+    return text if len(text) <= n else text[:n // 2 - 1] + "…" + text[-(n // 2):]
+
+
 def still_label(name, frame, fps):
     """REC TC primero: los stills y los marcadores se ordenan en el orden de la peli, no por nombre de clip (D21)."""
     return f"{tc(frame, fps)} · {os.path.splitext(name)[0]}"
@@ -243,10 +248,9 @@ def gui(resolve, bmd):
                           "Geometry": [200, 100, 680, 760], "MinimumSize": [620, 700]},
         ui.VGroup({"Spacing": 8}, [
             ui.HGroup({"Weight": 0}, [section("1 · Qué planos"), ui.HGap(0, 1),
+                                      # UIManager no tiene menús: el «⋯» se convierte en el botón, en el mismo sitio
                                       ui.Button({"ID": "More", "Text": "⋯", "Weight": 0, "Flat": True,
-                                                 "MinimumSize": [32, 22], "ToolTip": "Más opciones"})]),
-            ui.HGroup({"ID": "MoreRow", "Weight": 0, "Hidden": True}, [  # UIManager no tiene menús: fila plegable
-                ui.HGap(0, 1), ui.Button({"ID": "Save", "Text": "Guardar ajustes como predeterminados", "Weight": 0})]),
+                                                 "ToolTip": "Más opciones"})]),
             ui.Label({"ID": "Head", "Weight": 0, "WordWrap": True, "MinimumSize": [0, 36]}),
             row("Pistas", *track_boxes, ui.HGap(0, 1)),
             row("Planos", ui.ComboBox({"ID": "Scope", "MinimumSize": [240, 0]}), ui.HGap(0, 1)),
@@ -273,9 +277,9 @@ def gui(resolve, bmd):
             ui.VGap(6),
             ui.Label({"ID": "Status", "WordWrap": True, "Weight": 0, "MinimumSize": [0, 36]}),
             ui.TextEdit({"ID": "Summary", "ReadOnly": True, "Weight": 1, "MinimumSize": [0, 120]}),
-            ui.HGroup({"Weight": 0}, [ui.HGap(0, 1), ui.Button({"ID": "Cancel", "Text": "Cancelar", "Weight": 0}),
-                                      ui.Button({"ID": "Run", "Text": "Analizar", "Weight": 0, "Default": True,
-                                                 "MinimumSize": [110, 0]})]),
+            ui.HGroup({"Weight": 0, "MinimumSize": [0, 34]}, [
+                ui.HGap(0, 1), ui.Button({"ID": "Cancel", "Text": "Cancelar", "Weight": 0, "MinimumSize": [100, 28]}),
+                ui.Button({"ID": "Run", "Text": "Analizar", "Weight": 0, "MinimumSize": [110, 28]})]),
         ]))
     itm = win.GetItems()
     for _, label in PRESETS:
@@ -307,9 +311,11 @@ def gui(resolve, bmd):
         itm["Head"].Text = (f"Timeline: {tl.GetName()} · {len(shots)} planos en " + ", ".join(f"V{t}" for t in tracks())
                             + (f" · {marked} ya con marcadores {color()}" if marked else ""))
         exp = st["export"]
-        itm["ExportInfo"].Text = (f"Export: {os.path.basename(exp[0])} · "
+        # un nombre de fichero no tiene espacios y no salta de línea: se acorta y el completo va en el tooltip
+        itm["ExportInfo"].Text = (f"Export: {elide(os.path.basename(exp[0]))} · "
                                   f"{datetime.fromtimestamp(os.path.getmtime(exp[0])):%d/%m %H:%M} ✓" if exp
                                   else "No hay export válido en la cola de render")
+        itm["ExportInfo"].ToolTip = exp[0] if exp else ""
         itm["OutMarkers"].Text = f"Marcar en el timeline (marcadores {color()})"
 
     def save(ev):
@@ -318,10 +324,13 @@ def gui(resolve, bmd):
                        "respect": itm["Respect"].Checked, "color": itm["Color"].CurrentIndex,
                        "out_markers": itm["OutMarkers"].Checked, "out_gallery": itm["OutGallery"].Checked})
         itm["Status"].Text = "Ajustes guardados como predeterminados."
-        itm["MoreRow"].Hidden = True
 
     def more(ev):
-        itm["MoreRow"].Hidden = not itm["MoreRow"].Hidden
+        if itm["More"].Text == "⋯":
+            itm["More"].Text = "Guardar como predeterminado"
+        else:
+            save(ev)
+            itm["More"].Text = "⋯"
 
     def browse(ev):
         p = fu.RequestFile(os.path.expanduser("~"))
@@ -551,7 +560,6 @@ def gui(resolve, bmd):
     win.On.Run.Clicked = run
     win.On.Cancel.Clicked = cancel
     win.On.Browse.Clicked = browse
-    win.On.Save.Clicked = save
     win.On.More.Clicked = more
     win.On.Color.CurrentIndexChanged = refresh
     for t in range(1, n_tracks + 1):
