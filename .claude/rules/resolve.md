@@ -1,7 +1,7 @@
 # Resolve: cómo corre y cómo se prueba
-*Norma provisional, 2026-10-22. Se cierra cuando el owner decida el stack (pendiente, ver `docs/decisiones.md`).*
+*Norma de arranque, 2026-10-22 (D9, D11).*
 
-- **El script se lanza desde Resolve** (Workspace › Scripts) y debe ser fácil de instalar: un instalador, sin pasos manuales en Terminal más allá de lanzarlo.
+- **El script se lanza desde Resolve Studio ≥ 21.1 en macOS** (Workspace › Scripts, D9) y se instala con un doble clic en `install.command`, que crea el entorno del worker con `uv` (D11).
 - **Detección de Resolve**: por los globales `resolve`/`bmd`. Lanzado desde Workspace › Scripts, `__name__` **no** es `"__main__"`; no se condiciona la GUI a `__main__`.
 - **La GUI corre con el Python de Resolve: solo stdlib** a nivel de módulo. Si el análisis necesita librerías de terceros (numpy, OpenCV, modelos), corren en un worker aparte con su propio intérprete, nunca importadas en la GUI (lección de MHL MediaManagement: un import de terceros rompe el script en el menú de Resolve sin error visible).
 - **El análisis se prueba sin Resolve**: la lógica de puntuación recibe imágenes y devuelve puntuaciones, y es lo que cubren `make test` y la CI. La parte que habla con Resolve solo se prueba dentro de Resolve (a mano o con el MCP de Resolve).

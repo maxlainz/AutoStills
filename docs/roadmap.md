@@ -1,9 +1,11 @@
 # Roadmap
 
-**Provisional**: se fija con la entrevista de alcance (bitácora 00). Cada versión termina con tag, `CHANGELOG`, bitácora y `CLAUDE.md` al día.
+Alcance de la entrevista del 2026-10-22 (D6–D11). Cada versión termina con tag, `CHANGELOG`, bitácora y `CLAUDE.md` al día.
 
 | Versión | Qué entra (propuesta) | Criterio de cierre |
 |---|---|---|
 | v0.0 | Medir los dos caminos para obtener frames (miniatura de la Color page vs proxy renderizado) en un timeline real | Predicción escrita y medida; elección registrada como `Dn` |
-| v0.1.0 | Un still por plano del timeline: nitidez + movimiento + exposición + cara (Apple Vision), a un álbum nuevo de la Gallery; instalador de un paso | Probado por el owner en Resolve; tests de puntuación verdes |
-| Después | Ojos abiertos, estética, varios stills por plano con diversidad, exportar a fichero, presets de pesos, Windows | — |
+| v0.1.0 | N stills por plano (1 por defecto, D10): nitidez + movimiento + exposición + cara y ojos (Apple Vision), presets (D6), a un álbum nuevo de la Gallery (D8); `install.command` con uv (D11); estética solo si pasa la prueba (D7) | Probado por el owner en Resolve; tests de puntuación verdes |
+| Después | Estética (si no entró), exportar a fichero, PySceneDetect para planos largos | — |
+
+Fuera de alcance (D9): Windows, Linux y Resolve anterior a 21.1 o versión gratuita.

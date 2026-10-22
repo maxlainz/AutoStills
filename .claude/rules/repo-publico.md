@@ -1,5 +1,5 @@
 # Repo público: nada del estudio entra en el repo
-*Norma de la familia de repos, adoptada aquí el 2026-10-22 (D4). Que el repo sea público está pendiente de confirmar (D3).*
+*Norma de la familia de repos, adoptada aquí el 2026-10-22 (D4). El repo es público (D3).*
 
 - Nunca se versionan: el nombre del estudio, nombres de clientes, campañas o productoras; rutas reales, IPs, nombres de host o shares; credenciales; material de proyectos (vídeo, stills reales, LUTs, `.drp`, `.dra`, `.drx`).
 - **El nombre del estudio solo vive en `scripts/leak-patterns.local.txt`** (gitignored), que `scripts/leak-check.sh` lee como patrón prohibido.

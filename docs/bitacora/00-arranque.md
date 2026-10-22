@@ -1,6 +1,6 @@
 # 00 — Arranque (2026-10-22)
 
-**TL;DR.** Repo nuevo con el método de la familia (plantilla: MHL MediaManagement) e investigación de opciones en `docs/investigacion.md`. No hay código. Falta la entrevista de alcance: las preguntas abiertas están abajo y se registrarán como `Dn`.
+**TL;DR.** Repo nuevo con el método de la familia (plantilla: MHL MediaManagement) e investigación de opciones en `docs/investigacion.md`. No hay código. Entrevista de alcance en dos rondas → D3, D6–D11. Publicado en GitHub.
 
 ## Qué se leyó
 - Los repos hermanos del owner, en especial **MHL MediaManagement** (script de Resolve: router, normas, hooks, skills, CI, `leak-check`).
@@ -18,7 +18,17 @@
 - ffmpeg/OpenCV no decodifican BRAW, R3D ni ARRIRAW → que decodifique Resolve.
 - Apple Vision (pyobjc, MIT) da caras, calidad de cara, landmarks, saliencia y puntuación estética sin descargar modelos, solo en macOS.
 
+## Entrevista de alcance
+1. **¿Uso?** → varios: Gallery de referencia, miniaturas/redes y contact sheet, con presets. D6.
+2. **¿Criterios?** → nitidez/motion blur, caras con ojos abiertos, exposición y estética; «la estética hay que testearla». D7.
+3. **¿Salida?** → álbum nuevo de la Gallery. D8.
+4. **¿Plataforma?** → solo Mac + Resolve Studio 21.1+. D9.
+5. **¿Stills por plano?** → 1 por defecto, ajustable. D10.
+6. **¿Medir en el proyecto abierto?** → todavía no: estaba renderizando.
+7. **¿Instalación?** → un paso con uv. D11.
+8. **¿GitHub?** → público, MIT. D3.
+
 ## Siguiente paso
-1. Entrevista de alcance con el owner → `Dn`.
-2. Medir el camino A (miniaturas) en un timeline real, con predicción previa.
-3. Publicar en GitHub si el owner confirma D3.
+1. Medir el camino A (miniaturas de la Color page) con predicción previa, cuando el owner lo permita.
+2. Boceto de la ventana y de los presets (D6) para que el owner lo apruebe.
+3. v0.1.0.

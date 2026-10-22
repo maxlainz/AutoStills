@@ -9,7 +9,7 @@ Script para **DaVinci Resolve Studio** que elige y captura automáticamente el m
 CLAUDE.md              este router
 .claude/rules/         normas (una por archivo)        .claude/skills/   release · obsidian-vault
 .claude/settings.json  hooks: pull + issues al arrancar · bloqueo de rutas al escribir · bloqueo de commit en main · push al cerrar
-docs/decisiones.md     ADRs D1–Dn                      docs/bitacora/    una entrada por sesión (00 arranque)
+docs/decisiones.md     ADRs D1–D11                      docs/bitacora/    una entrada por sesión (00 arranque)
 docs/investigacion.md  API de Resolve, caminos para obtener frames, señales, precedentes, stack candidato
 docs/roadmap.md        versiones previstas (provisional)
 tests/                 vacío hasta que haya código     samples/          material local del owner (gitignored)
@@ -23,7 +23,7 @@ Makefile · CHANGELOG.md · README.md · LICENSE (MIT)
 |---|---|
 | `entrevista.md` | Preguntar al owner antes de suponer; las propuestas también; recomendación primero; bocetos en texto para la GUI |
 | `repo-publico.md` | Nada del estudio ni material real en el repo; fixtures sintéticos o con licencia; `make leak-check` (D4) |
-| `resolve.md` | (provisional) GUI solo stdlib; análisis en worker aparte; no tocar el proyecto del owner sin avisar |
+| `resolve.md` | GUI solo stdlib (D9, D11); análisis en worker aparte; no tocar el proyecto del owner sin avisar |
 | `decisiones-y-bitacora.md` | ADR por decisión, bitácora por sesión, `Hn` citados desde el código, `CLAUDE.md` y `CHANGELOG` al día |
 | `prediccion-antes-de-medir.md` | Predicción escrita antes de cada medida (s/plano, coste de leer un frame desde Resolve) |
 | `subagentes.md` | Orquestar y delegar; Opus para research/diseño/revisión, Sonnet para implementación, Haiku para inventarios |
@@ -51,11 +51,10 @@ make ci      # leak-check + lint + test — el gate de cada commit
 ```
 
 ## Estado y siguiente paso
-- **Estado (2026-10-22, bitácora 00)**: repo creado en local con el método de la familia; investigación hecha; sin código; sin remoto.
-- **Después**: entrevista de alcance → medir el camino «miniaturas de la Color page» → v0.1.0.
+- **Estado (2026-10-22, bitácora 00)**: repo creado con el método de la familia y publicado (D3); investigación hecha; entrevista de alcance hecha (D6–D11: varios usos con presets, cuatro criterios con la estética experimental, álbum de Gallery, solo Mac + Resolve Studio 21.1+, 1 still por plano ajustable, instalador de un paso con uv); sin código.
+- **Después**: medir cómo obtener los frames (miniaturas de la Color page vs proxy) cuando el owner lo permita → boceto de la ventana y presets → v0.1.0.
 
 ## Pendiente del owner (2026-10-22)
-- Entrevista de alcance (preguntas en la bitácora 00 y en el chat).
-- D3: ¿repo público en GitHub con MIT?
+- Permitir la medida de solo lectura en un proyecto (pospuesta: estaba renderizando).
 - Área del vault y nota de proyecto `AutoStills`.
 - Crear `scripts/leak-patterns.local.txt` con el nombre del estudio y de clientes.
