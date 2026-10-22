@@ -4,7 +4,7 @@ Alcance de la entrevista del 2026-10-22 (D6–D11). Cada versión termina con ta
 
 | Versión | Qué entra (propuesta) | Criterio de cierre |
 |---|---|---|
-| v0.0 | Medir los dos caminos para obtener frames (miniatura de la Color page vs proxy renderizado) en un timeline real | Predicción escrita y medida; elección registrada como `Dn` |
+| v0.0 | Medir cómo obtener los frames — **hecho** (bitácora 01, D13: `ExportCurrentFrameAsStill`) | — |
 | v0.1.0 | N stills por plano (1 por defecto, D10): nitidez + movimiento + exposición + cara y ojos (Apple Vision), presets (D6), a un álbum nuevo de la Gallery (D8); `install.command` con uv (D11); estética solo si pasa la prueba (D7) | Probado por el owner en Resolve; tests de puntuación verdes |
 | Después | Estética (si no entró), exportar a fichero, PySceneDetect para planos largos | — |
 
