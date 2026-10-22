@@ -7,6 +7,7 @@ Este fichero corre con el Python de Resolve: solo stdlib (norma resolve.md). El 
 import json
 import os
 import shutil
+import struct
 import subprocess
 import time
 from datetime import datetime
@@ -65,16 +66,80 @@ def visible_shots(items, marker_color=None):
     return shots
 
 
-def pick_export(jobs, tl_name, tl_start, tl_end, exists=os.path.exists, mtime=os.path.getmtime):
-    """D17: el último export válido de este timeline en la cola de render → (ruta, frame de timeline del frame 0)."""
+def find_file(target_dir, name, depth=2):
+    """La API da la carpeta de render sin la subcarpeta que Resolve puede añadir (bitácora 03): se busca dentro."""
+    if not target_dir or not name:
+        return None
+    for root, dirs, files in os.walk(target_dir):
+        if name in files:
+            return os.path.join(root, name)
+        if root[len(target_dir):].count(os.sep) >= depth - 1:
+            dirs[:] = []
+    return None
+
+
+def mov_start_frame(path):
+    """Primer frame del timecode de un .mov (pista tmcd) → (frame, fps) o None. Solo lee cabeceras de átomos.
+    El MarkIn del trabajo de render no es el rango renderizado (bitácora 03); el timecode del fichero sí."""
+    try:
+        with open(path, "rb") as fh:
+            def atoms(a, b):
+                while a + 8 <= b:
+                    fh.seek(a)
+                    size, typ = struct.unpack(">I4s", fh.read(8))
+                    hdr = 8
+                    if size == 1:
+                        size, hdr = struct.unpack(">Q", fh.read(8))[0], 16
+                    elif size == 0:
+                        size = b - a
+                    if size < hdr:
+                        return
+                    yield typ, a + hdr, a + size
+                    a += size
+
+            def find(a, b, names):
+                for typ, x, y in atoms(a, b):
+                    if typ == names[0]:
+                        yield from ([(x, y)] if len(names) == 1 else find(x, y, names[1:]))
+
+            for moov in find(0, os.fstat(fh.fileno()).st_size, [b"moov"]):
+                for trak in find(*moov, [b"trak"]):
+                    stbl = next(find(*trak, [b"mdia", b"minf", b"stbl"]), None)
+                    stsd = stbl and next(find(*stbl, [b"stsd"]), None)
+                    if not stsd:
+                        continue
+                    fh.seek(stsd[0] + 12)
+                    if fh.read(4) != b"tmcd":
+                        continue
+                    fh.seek(stsd[0] + 12 + 4 + 16 + 8)  # reservado, índice, flags → timescale, frameDuration, nFrames
+                    fps = fh.read(1)[0]
+                    stco = next(find(*stbl, [b"stco"]), None)
+                    co64 = None if stco else next(find(*stbl, [b"co64"]), None)
+                    if not (stco or co64):
+                        continue
+                    fh.seek((stco or co64)[0] + 8)  # versión y flags, número de entradas → primer offset
+                    off = struct.unpack(">I", fh.read(4))[0] if stco else struct.unpack(">Q", fh.read(8))[0]
+                    fh.seek(off)
+                    return struct.unpack(">I", fh.read(4))[0], fps
+    except (OSError, struct.error, TypeError, IndexError):
+        return None
+    return None
+
+
+def pick_export(jobs, tl_name, tl_start, fps, locate=find_file, mtime=os.path.getmtime, start=mov_start_frame):
+    """D17: el último export de este timeline en la cola de render → (ruta, frame de timeline del frame 0 del fichero).
+    No hace falta que cubra todo el timeline: los planos que caigan fuera no cuadran en la comprobación y se muestrean."""
     best = None
     for j in jobs:
-        path = os.path.join(j.get("TargetDir") or "", j.get("OutputFilename") or "")
-        if (j.get("TimelineName") == tl_name and j.get("status") == "Complete" and j.get("RenderMode") == "Single clip"
-                and j.get("IsExportVideo", True) and j.get("MarkIn", tl_start) <= tl_start
-                and j.get("MarkOut", tl_end) >= tl_end - 1 and j.get("OutputFilename") and exists(path)):
-            if best is None or mtime(path) > best[2]:
-                best = (path, j.get("MarkIn", tl_start), mtime(path))
+        if not (j.get("TimelineName") == tl_name and j.get("status") == "Complete"
+                and j.get("RenderMode") == "Single clip" and j.get("IsExportVideo", True)):
+            continue
+        path = locate(j.get("TargetDir"), j.get("OutputFilename"))
+        if path and (best is None or mtime(path) > best[2]):
+            tcf = start(path)
+            # sin timecode legible se supone que empieza al inicio del timeline; la comprobación lo confirma o no
+            first = tcf[0] if tcf and tcf[1] == round(float(fps)) else tl_start
+            best = (path, first, mtime(path))
     return best[:2] if best else None
 
 
@@ -134,7 +199,7 @@ def find_export(project, tl):
     for j in project.GetRenderJobList() or []:
         st = project.GetRenderJobStatus(j.get("JobId")) or {}
         jobs.append({**j, "status": st.get("JobStatus")})
-    return pick_export(jobs, tl.GetName(), tl.GetStartFrame(), tl.GetEndFrame())
+    return pick_export(jobs, tl.GetName(), tl.GetStartFrame(), tl.GetSetting("timelineFrameRate"))
 
 
 def gui(resolve, bmd):
@@ -161,8 +226,10 @@ def gui(resolve, bmd):
     win = disp.AddWindow({"ID": "AutoStills", "WindowTitle": f"AutoStills {__version__}", "Geometry": [200, 120, 600, 640]},
         ui.VGroup({"Spacing": 6}, [
             ui.HGroup({"Weight": 0}, [section("1 · Qué planos"), ui.HGap(0, 1),
-                                      ui.Button({"ID": "Save", "Text": "Guardar como predeterminado", "Weight": 0,
-                                                 "Flat": True})]),
+                                      ui.Button({"ID": "More", "Text": "⋯", "Weight": 0, "Flat": True,
+                                                 "ToolTip": "Más opciones"})]),
+            ui.HGroup({"ID": "MoreRow", "Weight": 0, "Hidden": True}, [  # UIManager no tiene menús: fila plegable
+                ui.HGap(0, 1), ui.Button({"ID": "Save", "Text": "Guardar ajustes como predeterminados", "Weight": 0})]),
             ui.Label({"ID": "Head", "Weight": 0}),
             ui.HGroup({"Weight": 0}, [ui.Label({"Text": "Pistas:", "Weight": 0})] + track_boxes
                       + [ui.HGap(20, 0), ui.ComboBox({"ID": "Scope"})]),
@@ -230,11 +297,16 @@ def gui(resolve, bmd):
                        "respect": itm["Respect"].Checked, "color": itm["Color"].CurrentIndex,
                        "out_markers": itm["OutMarkers"].Checked, "out_gallery": itm["OutGallery"].Checked})
         itm["Status"].Text = "Ajustes guardados como predeterminados."
+        itm["MoreRow"].Hidden = True
+
+    def more(ev):
+        itm["MoreRow"].Hidden = not itm["MoreRow"].Hidden
 
     def browse(ev):
         p = fu.RequestFile(os.path.expanduser("~"))
         if p:
-            st["export"] = (str(p), tl.GetStartFrame())  # shortcut: se asume que el fichero empieza al inicio del timeline
+            tcf = mov_start_frame(str(p))
+            st["export"] = (str(p), tcf[0] if tcf and tcf[1] == round(float(fps)) else tl.GetStartFrame())
             refresh()
 
     def busy(on):
@@ -458,6 +530,7 @@ def gui(resolve, bmd):
     win.On.Cancel.Clicked = cancel
     win.On.Browse.Clicked = browse
     win.On.Save.Clicked = save
+    win.On.More.Clicked = more
     win.On.Color.CurrentIndexChanged = refresh
     for t in range(1, n_tracks + 1):
         win.On[f"V{t}"].Clicked = refresh
