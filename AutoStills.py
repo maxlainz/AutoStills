@@ -17,6 +17,8 @@ CACHE_DIR = os.path.expanduser("~/Library/Caches/AutoStills")              # fra
 PRESETS = [("gallery", "Gallery de referencia"), ("social", "Miniatura / redes"), ("contact", "Contact sheet")]
 MARKER_COLORS = ["Green", "Blue", "Cyan", "Yellow", "Red", "Pink", "Purple", "Fuchsia", "Rose", "Lavender", "Sky",
                  "Mint", "Lemon", "Sand", "Cocoa", "Cream"]
+SETTINGS = os.path.join(HOME_DIR, "settings.json")                       # «Guardar como predeterminado»
+MARKER_TAG = "AutoStills"  # customData de los marcadores que deja AutoStills (D20)
 SAMPLES_PER_SHOT = 12    # shortcut: fijo hasta medir cuántos hacen falta (H4: ~0,5 s por frame muestreado)
 CHECK_THRESHOLD = 0.03   # shortcut: sin calibrar en Resolve; por encima, el plano no cuadra con el export (D17)
 
@@ -44,7 +46,7 @@ def visible_shots(items, marker_color=None):
     """`items`: clips con media de las pistas elegidas, dicts {track, start, end, name, path, src, uid, markers}.
     La pista de encima tapa a la de abajo (es lo que sale en el render); de cada clip se queda su tramo visible más
     largo. Criterio 19: un clip que repite media ya usada (mismo fichero, rango fuente solapado) no da otro still.
-    Criterio 17: un marcador del color elegido dentro del tramo fija el frame."""
+    Criterio 17 / D20: los marcadores del color elegido dentro del tramo son los stills del plano (no se analiza)."""
     shots = []
     for it in sorted(items, key=lambda i: (i["start"], -i["track"])):
         covers = [(o["start"], o["end"]) for o in items if o["track"] > it["track"]
@@ -56,13 +58,10 @@ def visible_shots(items, marker_color=None):
         src = (it["src"] + a - it["start"], it["src"] + b - it["start"])
         dup = next((s["id"] for s in shots if s["path"] == it["path"] and s["src"][0] < src[1] and src[0] < s["src"][1]),
                    None)
-        marker = None
-        if marker_color:
-            hits = sorted(it["start"] + off for off, color in it["markers"].items()
-                          if color == marker_color and a <= it["start"] + off < b)
-            marker = hits[0] if hits else None
+        marks = sorted(it["start"] + off for off, color in it["markers"].items()
+                       if marker_color and color == marker_color and a <= it["start"] + off < b)
         shots.append({"id": f"{it['track']}:{it['start']}", "name": it["name"], "path": it["path"], "uid": it.get("uid"),
-                      "start": a, "end": b, "src": src, "marker": marker, "dup_of": dup})
+                      "item_start": it["start"], "start": a, "end": b, "src": src, "markers": marks, "dup_of": dup})
     return shots
 
 
@@ -88,14 +87,32 @@ def sample_frames(start, end, k=SAMPLES_PER_SHOT):
 
 
 def still_label(name, frame, fps):
-    return f"{os.path.splitext(name)[0]} · {tc(frame, fps)}"
+    """REC TC primero: los stills y los marcadores se ordenan en el orden de la peli, no por nombre de clip (D21)."""
+    return f"{tc(frame, fps)} · {os.path.splitext(name)[0]}"
+
+
+def load_settings(path=SETTINGS):
+    try:
+        with open(path) as fh:
+            return json.load(fh)
+    except (OSError, ValueError):
+        return {}
+
+
+def save_settings(values, path=SETTINGS):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as fh:
+        json.dump(values, fh, indent=1)
+
+
 
 
 # ---------------------------------------------------------------- Resolve
 
 def read_items(tl, tracks, only_selected=False):
+    """Clips con media de las pistas elegidas → (dicts para visible_shots, {uid: TimelineItem})."""
     sel = {c.GetUniqueId() for c in (tl.GetSelectedClips() or [])} if only_selected else None
-    out = []
+    out, objs = [], {}
     for t in tracks:
         for it in tl.GetItemListInTrack("video", t) or []:
             mpi = it.GetMediaPoolItem()
@@ -105,9 +122,11 @@ def read_items(tl, tracks, only_selected=False):
                 continue
             # shortcut: se asume que las claves de GetMarkers() son offsets desde el inicio del clip (sin verificar)
             markers = {int(k): (v or {}).get("color") for k, v in (it.GetMarkers() or {}).items()}
+            uid = it.GetUniqueId()
+            objs[uid] = it
             out.append({"track": t, "start": it.GetStart(), "end": it.GetEnd(), "name": it.GetName(), "path": path,
-                        "src": it.GetLeftOffset(), "uid": it.GetUniqueId(), "markers": markers})
-    return out
+                        "src": it.GetLeftOffset(), "uid": uid, "markers": markers})
+    return out, objs
 
 
 def find_export(project, tl):
@@ -130,29 +149,45 @@ def gui(resolve, bmd):
     fps = tl.GetSetting("timelineFrameRate")
     n_tracks = int(tl.GetTrackCount("video") or 1)
     python = os.path.join(HOME_DIR, ".venv", "bin", "python")
+    cfg = load_settings()
     st = {"phase": "idle", "queue": [], "after": None, "proc": None, "export": find_export(project, tl), "log": [],
-          "restore": None, "tmp": None}
+          "restore": None, "tmp": None, "steps": [], "result": None}
 
-    track_boxes = [ui.CheckBox({"ID": f"V{t}", "Text": f"V{t}", "Checked": t == 1, "Weight": 0})
-                   for t in range(1, n_tracks + 1)]
-    win = disp.AddWindow({"ID": "AutoStills", "WindowTitle": f"AutoStills {__version__}", "Geometry": [200, 120, 560, 520]},
+    def section(text):
+        return ui.Label({"Text": f"<b>{text}</b>", "Weight": 0})
+
+    track_boxes = [ui.CheckBox({"ID": f"V{t}", "Text": f"V{t}", "Weight": 0,
+                                "Checked": t in cfg.get("tracks", [1])}) for t in range(1, n_tracks + 1)]
+    win = disp.AddWindow({"ID": "AutoStills", "WindowTitle": f"AutoStills {__version__}", "Geometry": [200, 120, 600, 640]},
         ui.VGroup({"Spacing": 6}, [
+            ui.HGroup({"Weight": 0}, [section("1 · Qué planos"), ui.HGap(0, 1),
+                                      ui.Button({"ID": "Save", "Text": "Guardar como predeterminado", "Weight": 0,
+                                                 "Flat": True})]),
             ui.Label({"ID": "Head", "Weight": 0}),
+            ui.HGroup({"Weight": 0}, [ui.Label({"Text": "Pistas:", "Weight": 0})] + track_boxes
+                      + [ui.HGap(20, 0), ui.ComboBox({"ID": "Scope"})]),
+            section("2 · Cómo elegir"),
             ui.HGroup({"Weight": 0}, [ui.Label({"Text": "Preset:", "Weight": 0}), ui.ComboBox({"ID": "Preset"})]),
-            ui.HGroup({"Weight": 0}, [ui.Label({"Text": "Stills por plano:", "Weight": 0}),
-                                      ui.SpinBox({"ID": "N", "Minimum": 1, "Maximum": 5, "Value": 1})]),
-            ui.HGroup({"Weight": 0}, [ui.Label({"Text": "Pistas:", "Weight": 0})] + track_boxes),
-            ui.HGroup({"Weight": 0}, [ui.Label({"Text": "Planos:", "Weight": 0}), ui.ComboBox({"ID": "Scope"})]),
+            ui.HGroup({"Weight": 0}, [ui.Label({"Text": "Stills por plano: de", "Weight": 0}),
+                                      ui.SpinBox({"ID": "Min", "Minimum": 0, "Maximum": 5, "Value": cfg.get("min", 0)}),
+                                      ui.Label({"Text": "a", "Weight": 0}),
+                                      ui.SpinBox({"ID": "Max", "Minimum": 1, "Maximum": 5, "Value": cfg.get("max", 3)}),
+                                      ui.HGap(0, 1)]),
             ui.HGroup({"Weight": 0}, [ui.Label({"Text": "Fuente:", "Weight": 0}), ui.ComboBox({"ID": "Source"})]),
             ui.HGroup({"Weight": 0}, [ui.Label({"ID": "ExportInfo", "WordWrap": True}),
                                       ui.Button({"ID": "Browse", "Text": "Elegir fichero…", "Weight": 0})]),
-            ui.HGroup({"Weight": 0}, [ui.CheckBox({"ID": "UseMarkers", "Text": "Marcadores mandan", "Checked": True}),
-                                      ui.ComboBox({"ID": "MarkerColor"})]),
-            ui.HGroup({"Weight": 0}, [ui.Label({"Text": "Álbum:", "Weight": 0}), ui.LineEdit({"ID": "Album"})]),
+            ui.HGroup({"Weight": 0}, [ui.CheckBox({"ID": "Respect", "Text": "Respetar marcadores existentes",
+                                                   "Checked": cfg.get("respect", True)}),
+                                      ui.Label({"Text": "color", "Weight": 0}), ui.ComboBox({"ID": "Color"})]),
+            section("3 · Qué hacer con los elegidos"),
+            ui.CheckBox({"ID": "OutMarkers", "Checked": cfg.get("out_markers", True), "Weight": 0}),
+            ui.HGroup({"Weight": 0}, [ui.CheckBox({"ID": "OutGallery", "Text": "Añadir a la Gallery · álbum",
+                                                   "Checked": cfg.get("out_gallery", False), "Weight": 0}),
+                                      ui.LineEdit({"ID": "Album"})]),
             ui.Label({"ID": "Status", "WordWrap": True, "Weight": 0}),
             ui.TextEdit({"ID": "Summary", "ReadOnly": True, "Weight": 1}),
             ui.HGroup({"Weight": 0}, [ui.HGap(0, 1), ui.Button({"ID": "Cancel", "Text": "Cancelar", "Weight": 0}),
-                                      ui.Button({"ID": "Run", "Text": "Sacar stills", "Weight": 0})]),
+                                      ui.Button({"ID": "Run", "Text": "Analizar", "Weight": 0, "Default": True})]),
         ]))
     itm = win.GetItems()
     for _, label in PRESETS:
@@ -162,22 +197,39 @@ def gui(resolve, bmd):
     for label in ("Último export del timeline (mejor)", "Desde el timeline (muestreo)"):
         itm["Source"].AddItem(label)
     for c in MARKER_COLORS:
-        itm["MarkerColor"].AddItem(c)
+        itm["Color"].AddItem(c)
+    for key in ("Preset", "Scope", "Source", "Color"):
+        itm[key].CurrentIndex = cfg.get(key.lower(), 0)
     itm["Album"].Text = f"AutoStills {datetime.now():%Y-%m-%d %H:%M}"
     itm["Cancel"].Enabled = False
+
+    def color():
+        return MARKER_COLORS[itm["Color"].CurrentIndex]
+
+    def tracks():
+        return [t for t in range(1, n_tracks + 1) if itm[f"V{t}"].Checked]
 
     def say(msg):
         st["log"].append(msg)
         itm["Summary"].PlainText = "\n".join(st["log"])
 
     def refresh(ev=None):
-        tracks = [t for t in range(1, n_tracks + 1) if itm[f"V{t}"].Checked]
-        shots = visible_shots(read_items(tl, tracks))
-        itm["Head"].Text = f"<b>Timeline:</b> {tl.GetName()} · {len(shots)} planos en " + ", ".join(f"V{t}" for t in tracks)
+        shots = visible_shots(read_items(tl, tracks())[0], color())
+        marked = sum(1 for s in shots if s["markers"])
+        itm["Head"].Text = (f"Timeline: {tl.GetName()} · {len(shots)} planos en " + ", ".join(f"V{t}" for t in tracks())
+                            + (f" · {marked} ya con marcadores {color()}" if marked else ""))
         exp = st["export"]
         itm["ExportInfo"].Text = (f"Export: {os.path.basename(exp[0])} · "
-                                  f"{datetime.fromtimestamp(os.path.getmtime(exp[0])):%d/%m %H:%M}" if exp
+                                  f"{datetime.fromtimestamp(os.path.getmtime(exp[0])):%d/%m %H:%M} ✓" if exp
                                   else "No hay export válido en la cola de render")
+        itm["OutMarkers"].Text = f"Marcar en el timeline (marcadores {color()})"
+
+    def save(ev):
+        save_settings({"tracks": tracks(), "scope": itm["Scope"].CurrentIndex, "preset": itm["Preset"].CurrentIndex,
+                       "min": int(itm["Min"].Value), "max": int(itm["Max"].Value), "source": itm["Source"].CurrentIndex,
+                       "respect": itm["Respect"].Checked, "color": itm["Color"].CurrentIndex,
+                       "out_markers": itm["OutMarkers"].Checked, "out_gallery": itm["OutGallery"].Checked})
+        itm["Status"].Text = "Ajustes guardados como predeterminados."
 
     def browse(ev):
         p = fu.RequestFile(os.path.expanduser("~"))
@@ -188,6 +240,10 @@ def gui(resolve, bmd):
     def busy(on):
         itm["Run"].Enabled = not on
         itm["Cancel"].Enabled = on
+
+    def step(name, detail=""):
+        k = st["steps"].index(name) + 1 if name in st["steps"] else len(st["steps"])
+        itm["Status"].Text = f"Paso {k} de {len(st['steps'])} · {name}" + (f" · {detail}" if detail else "")
 
     def restore():
         if st["restore"]:
@@ -211,42 +267,48 @@ def gui(resolve, bmd):
                                       stdout=open(pp, "w"), stderr=open(pp + ".err", "w"), env=env)
         st.update(phase="worker", after=then, files=(rp, pp))
 
-    def export_frames(frames, then):
+    def export_frames(frames, then, label):
         st["queue"] = [(f, os.path.join(st["tmp"], f"{f}.jpg")) for f in frames]
-        st.update(phase="export", after=then, total=len(st["queue"]))
+        st.update(phase="export", after=then, total=len(st["queue"]), label=label)
 
     def run(ev):
         st["log"] = []
-        tracks = [t for t in range(1, n_tracks + 1) if itm[f"V{t}"].Checked]
-        color = MARKER_COLORS[itm["MarkerColor"].CurrentIndex] if itm["UseMarkers"].Checked else None
-        shots = visible_shots(read_items(tl, tracks, itm["Scope"].CurrentIndex == 1), color)
-        st["shots"] = shots
-        st["todo"] = [s for s in shots if s["marker"] is None and s["dup_of"] is None]
-        st["via"] = {s["id"]: "marcador" for s in shots if s["marker"] is not None}
-        st["via"].update({s["id"]: "repetido" for s in shots if s["dup_of"] is not None and s["marker"] is None})
+        respect = itm["Respect"].Checked
+        items, st["objs"] = read_items(tl, tracks(), itm["Scope"].CurrentIndex == 1)
+        shots = visible_shots(items, color() if respect else None)
         if not shots:
             return say("No hay planos con media en las pistas elegidas.")
+        if not (itm["OutMarkers"].Checked or itm["OutGallery"].Checked):
+            return say("Elige al menos una salida en el paso 3.")
+        st["shots"] = shots
+        st["todo"] = [s for s in shots if not s["markers"] and s["dup_of"] is None]
+        st["via"] = {s["id"]: "marcadores" for s in shots if s["markers"]}
+        st["via"].update({s["id"]: "repetido" for s in shots if s["dup_of"] is not None and not s["markers"]})
+        use_export = itm["Source"].CurrentIndex == 0 and st["export"]
+        st["steps"] = (["Comprobar el export"] if use_export and st["todo"] else []) + \
+                      (["Analizar"] if st["todo"] else []) + ["Marcar y añadir", "Listo"]
         st["restore"] = (resolve.GetCurrentPage(), tl.GetCurrentTimecode())
         st["tmp"] = os.path.join(CACHE_DIR, f"run_{int(time.time())}")
         os.makedirs(st["tmp"], exist_ok=True)
         busy(True)
         timer.Start()
-        use_export = itm["Source"].CurrentIndex == 0 and st["export"]
         if itm["Source"].CurrentIndex == 0 and not st["export"]:
             say("No hay export válido: se analiza por muestreo desde el timeline.")
-        if use_export:
+        if not st["todo"]:
+            output({"shots": []})
+        elif use_export:
             mids = {s["id"]: (s["start"] + s["end"]) // 2 for s in st["todo"]}
             export_frames(sorted(mids.values()), lambda: worker(
                 {"source": "check", "video": st["export"][0], "video_first_frame": st["export"][1],
                  "frames": {str(f): os.path.join(st["tmp"], f"{f}.jpg") for f in mids.values()}},
-                lambda res: after_check(res, mids)))
+                lambda res: after_check(res, mids)), "Comprobar el export")
         else:
             sample(st["todo"], video=False)
 
     def after_check(res, mids):
         diff = res.get("diff", {})
         bad = [s for s in st["todo"] if diff.get(str(mids[s["id"]])) is None or diff[str(mids[s["id"]])] > CHECK_THRESHOLD]
-        say(f"Comprobación del export: {len(st['todo']) - len(bad)} planos cuadran, {len(bad)} no (se muestrean).")
+        say(f"Export: {len(st['todo']) - len(bad)} planos cuadran con el timeline, {len(bad)} no (se muestrean).")
         sample(bad, video=True)
 
     def sample(bad, video):
@@ -262,46 +324,71 @@ def gui(resolve, bmd):
                     d["frames"] = {str(f): os.path.join(st["tmp"], f"{f}.jpg") for f in frames[s["id"]]}
                 shots.append(d)
             job = {"source": "video" if video else "frames", "shots": shots, "frames": {},
-                   "preset": PRESETS[itm["Preset"].CurrentIndex][0], "n": int(itm["N"].Value)}
+                   "preset": PRESETS[itm["Preset"].CurrentIndex][0], "min": int(itm["Min"].Value),
+                   "max": max(int(itm["Max"].Value), int(itm["Min"].Value))}
             if video:
                 job.update(video=st["export"][0], video_first_frame=st["export"][1])
-            worker(job, grab)
-        export_frames(sorted({f for fs in frames.values() for f in fs}), analyse)
+            step("Analizar")
+            worker(job, output)
+        export_frames(sorted({f for fs in frames.values() for f in fs}), analyse, "Analizar")
 
-    def grab(res):
-        picks = [(s["id"], s["marker"]) for s in st["shots"] if s["marker"] is not None]
-        flags = {}
+    def output(res):
+        by_id = {s["id"]: s for s in st["shots"]}
+        st["result"] = res
+        new = []  # (shot, frame, nota) elegidos ahora; los planos con marcadores ya tienen los suyos
         for r in res.get("shots", []):
-            picks += [(r["id"], p["frame"]) for p in r["picks"]]
-            flags[r["id"]] = r["flags"]
-        st["flags"] = flags
-        gallery = project.GetGallery()
-        album = gallery.CreateGalleryStillAlbum()
-        gallery.SetAlbumName(album, itm["Album"].Text)
-        gallery.SetCurrentStillAlbum(album)
-        resolve.OpenPage("color")  # shortcut: se asume que GrabStill necesita la Color page (sin verificar)
-        names = {s["id"]: s["name"] for s in st["shots"]}
-        st["queue"] = [(names[i], f) for i, f in sorted(picks, key=lambda p: p[1])]
-        st.update(phase="grab", album=album, total=len(st["queue"]), grabbed=0)
+            new += [(by_id[r["id"]], p["frame"], f"{MARKER_TAG} · {PRESETS[itm['Preset'].CurrentIndex][1]} · "
+                     f"{p['score']:.2f}") for p in r["picks"]]
+        marked = 0
+        if itm["OutMarkers"].Checked:
+            for s, f, note in new:
+                it = st["objs"].get(s["uid"])
+                # shortcut: offset desde el inicio del clip, como al leer (sin verificar en Resolve)
+                if it and it.AddMarker(f - s["item_start"], color(), still_label(s["name"], f, fps), note, 1, MARKER_TAG):
+                    marked += 1
+        st["marked"] = marked
+        grabs = sorted([(s, f) for s, f, _ in new] + [(s, f) for s in st["shots"] for f in s["markers"]],
+                       key=lambda x: x[1])
+        if itm["OutGallery"].Checked and grabs:
+            gallery = project.GetGallery()
+            album = gallery.CreateGalleryStillAlbum()
+            gallery.SetAlbumName(album, itm["Album"].Text)
+            gallery.SetCurrentStillAlbum(album)
+            resolve.OpenPage("color")  # shortcut: se asume que GrabStill necesita la Color page (sin verificar)
+            st["queue"] = grabs
+            st.update(phase="grab", album=album, total=len(grabs), grabbed=0)
+        else:
+            st["grabbed"] = 0
+            finish()
 
     def finish():
         timer.Stop()
         restore()
         busy(False)
         st["phase"] = "idle"
-        if st.get("flags") is not None:
-            via = st["via"]
-            say(f"✓ {st.get('grabbed', 0)} stills en el álbum «{itm['Album'].Text}».")
-            for v in ("export", "muestreo", "marcador", "repetido"):
-                ids = [i for i, x in via.items() if x == v]
+        res = st.pop("result", None)
+        if res is not None:
+            itm["Status"].Text = f"Paso {len(st['steps'])} de {len(st['steps'])} · Listo"
+            out = []
+            if itm["OutMarkers"].Checked:
+                out.append(f"{st['marked']} marcadores {color()} nuevos")
+            if itm["OutGallery"].Checked:
+                out.append(f"{st['grabbed']} stills en «{itm['Album'].Text}»")
+            say("✓ " + " · ".join(out))
+            via, flags = st["via"], {r["id"]: r["flags"] for r in res.get("shots", [])}
+            names = {s["id"]: s["name"] for s in st["shots"]}
+            for v, text in (("export", "analizados con el export"), ("muestreo", "analizados por muestreo"),
+                            ("marcadores", "respetados (ya tenían marcadores)"), ("repetido", "repetidos (sin still)")):
+                n = sum(1 for x in via.values() if x == v)
+                if n:
+                    say(f"  {n} planos {text}")
+            for key, text in (("descartado", "sin still (cortos o blandos)"), ("sin_cara", "sin cara"),
+                              ("error", "con error")):
+                ids = [names[i] for i, f in flags.items() if any(x.startswith(key) for x in f)]
                 if ids:
-                    say(f"  {v}: {len(ids)} planos")
-            for label, key in (("sin cara", "sin_cara"), ("sin frames", "sin_frames"), ("con error", "error")):
-                ids = [i for i, f in st["flags"].items() if any(x.startswith(key) for x in f)]
-                if ids:
-                    say(f"  {label}: {', '.join(ids)}")
-            st["flags"] = None
+                    say(f"  {len(ids)} {text}: " + ", ".join(os.path.splitext(n)[0] for n in ids))
             itm["Album"].Text = f"AutoStills {datetime.now():%Y-%m-%d %H:%M}"
+            refresh()
 
     def tick(ev=None):
         try:
@@ -310,7 +397,7 @@ def gui(resolve, bmd):
                     f, path = st["queue"].pop(0)
                     tl.SetCurrentTimecode(tc(f, fps))
                     project.ExportCurrentFrameAsStill(path)
-                    itm["Status"].Text = f"Leyendo frames de Resolve {st['total'] - len(st['queue'])}/{st['total']}"
+                    step(st["label"], f"leyendo frames de Resolve {st['total'] - len(st['queue'])}/{st['total']}")
                 else:
                     st["phase"] = "next"
                     st["after"]()
@@ -321,8 +408,8 @@ def gui(resolve, bmd):
                         last = [x for x in fh.read().splitlines() if x.strip()][-1:]
                     if last:
                         p = json.loads(last[0])
-                        itm["Status"].Text = f"Analizando… {int(p['progress'] * 100)} % · plano {p['shot']}"
-                except (OSError, ValueError):
+                        step(st["steps"][0] if "diff" in last[0] else "Analizar", f"{int(p['progress'] * 100)} %")
+                except (OSError, ValueError, KeyError):
                     pass
                 code = st["proc"].poll()
                 if code is not None:
@@ -337,15 +424,14 @@ def gui(resolve, bmd):
                     st["after"](res)
             elif st["phase"] == "grab":
                 if st["queue"]:
-                    name, f = st["queue"].pop(0)
+                    s, f = st["queue"].pop(0)
                     tl.SetCurrentTimecode(tc(f, fps))
                     still = tl.GrabStill()
                     if still:
-                        st["album"].SetLabel(still, still_label(name, f, fps))
+                        st["album"].SetLabel(still, still_label(s["name"], f, fps))
                         st["grabbed"] += 1
-                    itm["Status"].Text = f"Sacando stills {st['total'] - len(st['queue'])}/{st['total']}"
+                    step("Marcar y añadir", f"Gallery {st['total'] - len(st['queue'])}/{st['total']}")
                 else:
-                    itm["Status"].Text = "Listo."
                     finish()
         except Exception as e:  # que un fallo no deje la ventana colgada ni el cabezal fuera de sitio
             say(f"✗ {type(e).__name__}: {e}")
@@ -356,10 +442,11 @@ def gui(resolve, bmd):
             st["proc"].terminate()
             st["proc"] = None
         st["queue"] = []
-        st["flags"] = None
-        say("Cancelado.")
-        itm["Status"].Text = ""
-        finish()
+        st.pop("result", None)
+        if st["phase"] != "idle":
+            say("Cancelado.")
+            itm["Status"].Text = ""
+            finish()
 
     def close(ev):
         cancel()
@@ -370,6 +457,8 @@ def gui(resolve, bmd):
     win.On.Run.Clicked = run
     win.On.Cancel.Clicked = cancel
     win.On.Browse.Clicked = browse
+    win.On.Save.Clicked = save
+    win.On.Color.CurrentIndexChanged = refresh
     for t in range(1, n_tracks + 1):
         win.On[f"V{t}"].Clicked = refresh
     # según la versión el temporizador llega como disp.On.Timeout o disp.On.<ID>.Timeout (hallazgo de MHL MediaManagement)

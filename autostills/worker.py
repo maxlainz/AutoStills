@@ -8,7 +8,7 @@ job.json:
    | "source": "frames", "frames": {"<frame de timeline>": "<ruta de imagen>", ...},   # muestreo desde Resolve (D13)
    "shots": [{"id": "...", "start": <frame>, "end": <frame, exclusivo>, "frames": {...} opcional}, ...],
    # un plano con su propio "frames" se analiza con esos frames aunque la fuente sea el vídeo (mezcla, D17)
-   "preset": "gallery" | "social" | "contact", "n": 1, "aesthetics": false}
+   "preset": "gallery" | "social" | "contact", "min": 0, "max": 3, "aesthetics": false}   # D19
 result.json:
   {"version": "...", "shots": [{"id", "analysed": <frames>, "flags": [...],
                                 "picks": [{"frame": <frame de timeline>, "score": 0..1, "detail": {rasgo: valor}}]}]}
@@ -27,8 +27,9 @@ from . import __version__, faces, metrics, select
 CHEAP = ("sharp", "still", "exposure", "focus_stable", "tonal", "skin", "representative")
 
 
-def analyse_shot(frames, images, preset="gallery", n=1, aesthetics=False):
-    """`frames`: frames de timeline en orden; `images`: función frame → imagen BGR a resolución completa."""
+def analyse_shot(frames, images, preset="gallery", min_n=0, max_n=3, aesthetics=False):
+    """`frames`: frames de timeline en orden; `images`: función frame → imagen BGR a resolución completa.
+    Devuelve hasta `max_n` stills, uno por encuadre distinto (D19); el descarte por calidad lo hace run()."""
     weights = select.PRESETS[preset]
     mets, prev, readable = [], None, []
     for f in frames:
@@ -46,8 +47,13 @@ def analyse_shot(frames, images, preset="gallery", n=1, aesthetics=False):
     idx = [i for i, v in enumerate(ok) if v]
     cheap_w = {k: w for k, w in weights.items() if k in CHEAP}
     cheap = select.score([feats[i] for i in idx], cheap_w)
-    cand = [idx[j] for j in select.pick([frames[i] for i in idx], cheap, [mets[i]["thumb"] for i in idx],
-                                        max(select.CANDIDATES, n))]
+    by_frame = dict(zip(idx, cheap))
+    segs = select.framings([m["thumb"] for m in mets], ok)
+    per_seg = max(2, -(-max(select.CANDIDATES, max_n) // len(segs)))
+    cand = []
+    for seg in segs:  # candidatos de cada encuadre, para que un encuadre corto no se quede sin representante
+        cand += [seg[j] for j in select.pick([frames[i] for i in seg], [by_frame[i] for i in seg],
+                                             [mets[i]["thumb"] for i in seg], per_seg)]
     any_face = False
     for i in cand:
         img = images(frames[i])
@@ -57,7 +63,12 @@ def analyse_shot(frames, images, preset="gallery", n=1, aesthetics=False):
         face_sharp = metrics.sharpness(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), box) if box else None
         feats[i] = {**feats[i], **select.face_features(a, face_sharp)}
     final = select.score([feats[i] for i in cand], weights)
-    picks = select.pick([frames[i] for i in cand], final, [mets[i]["thumb"] for i in cand], n)
+    pos = {i: j for j, i in enumerate(cand)}
+    best = [max((pos[i] for i in seg if i in pos), key=lambda j: final[j]) for seg in segs if any(i in pos for i in seg)]
+    picks = sorted(best, key=lambda j: -final[j])[:max_n]
+    if len(picks) < min_n:  # el mínimo manda aunque no haya tantos encuadres: se rellena separando en tiempo
+        extra = select.pick([frames[i] for i in cand], final, [mets[i]["thumb"] for i in cand], min_n, min_diff=0.0)
+        picks += [j for j in extra if j not in picks][:min_n - len(picks)]
     flags = [] if any_face or not faces.available() else ["sin_cara"]
     if not faces.available():
         flags.append("sin_vision")
@@ -65,7 +76,8 @@ def analyse_shot(frames, images, preset="gallery", n=1, aesthetics=False):
         flags.append("plano_corto")
     if lost:
         flags.append(f"frames_ilegibles:{lost}")
-    return {"analysed": len(frames), "flags": flags,
+    return {"analysed": len(frames), "flags": flags, "framings": len(segs),
+            "best_sharp": round(mets[cand[picks[0]]]["sharp"], 2) if picks else None,
             "picks": [{"frame": frames[cand[j]], "score": round(final[j], 4),
                        "detail": {k: (round(v, 4) if isinstance(v, float) else v)
                                   for k, v in feats[cand[j]].items() if v is not None}} for j in picks]}
@@ -141,13 +153,33 @@ def run(job):
     out = []
     for k, (s, fr, images) in enumerate((x for g in gens for x in g), 1):
         try:
-            res = analyse_shot(fr, images, job.get("preset", "gallery"), job.get("n", 1), job.get("aesthetics", False))
+            res = analyse_shot(fr, images, job.get("preset", "gallery"), job.get("min", 0), job.get("max", 3),
+                               job.get("aesthetics", False))
         except Exception as e:  # un plano raro no se lleva por delante el resto del timeline
             res = {"analysed": 0, "flags": [f"error:{type(e).__name__}: {e}"], "picks": []}
         out.append({"id": s["id"], **res})
         print(json.dumps({"progress": k / len(shots), "shot": s["id"]}), flush=True)
+    if job.get("min", 0) == 0:
+        _gate(out, {s["id"]: s["end"] - s["start"] for s in shots})
     order = {s["id"]: i for i, s in enumerate(shots)}
     return {"version": __version__, "shots": sorted(out, key=lambda r: order[r["id"]])}
+
+
+def _gate(results, lengths):
+    """D19: con mínimo 0, un plano muy corto o claramente más blando que los planos normales del timeline no da
+    still. La nitidez dentro del plano es relativa; aquí se compara el mejor frame de cada plano con el resto."""
+    sharp = [r["best_sharp"] for r in results if r.get("best_sharp")]
+    med = float(np.median(sharp)) if sharp else 0.0
+    for r in results:
+        if not r["picks"]:
+            continue
+        if lengths[r["id"]] < select.MIN_SHOT:
+            r["flags"].append("descartado:corto")
+        elif len(sharp) >= 3 and r.get("best_sharp") is not None and r["best_sharp"] < select.SHARP_GATE * med:
+            r["flags"].append("descartado:blando")
+        else:
+            continue
+        r["discarded"], r["picks"] = r["picks"], []
 
 
 def _jsonable(o):

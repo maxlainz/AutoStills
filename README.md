@@ -12,9 +12,13 @@ Se lanzará desde Resolve: **Workspace › Scripts › AutoStills**.
    - **Último export del timeline (mejor).** Analiza *todos* los frames del render más reciente de la cola de render. Antes comprueba, plano a plano, que el render cuadra con lo que Resolve muestra ahora; los planos que no cuadran se analizan por muestreo.
    - **Desde el timeline (muestreo).** Lee 12 frames graduados por plano desde Resolve (~0,5 s por frame).
 3. Puntúa cada frame (`docs/criterios.md`): nitidez, movimiento, exposición, foco, caras (ojos, boca, orientación, cara completa), composición, texto en pantalla, representatividad, rango tonal y piel.
-4. Mueve el cabezal al frame ganador de cada plano y hace *Grab Still* en un álbum nuevo de la Gallery, con la etiqueta «CLIP · TC». Si un clip tiene un marcador del color elegido, se usa ese frame.
+4. Elige **de 0 a X stills por plano** (por defecto 0–3): ninguno en un plano muy corto o blando comparado con el resto del timeline, y uno por encuadre distinto si la cámara cambia de encuadre dentro del plano.
+5. **Qué hacer con los elegidos**:
+   - **Marcar en el timeline** (por defecto): marcadores del color elegido, con el nombre «REC TC · CLIP».
+   - **Añadir a la Gallery**: Grab Still a un álbum nuevo, con la misma etiqueta.
+   - Al relanzar, un plano que ya tiene marcadores de ese color no se analiza: sus marcadores son sus stills. Flujo típico: un pase marca, corriges a mano moviendo o borrando marcadores, y un segundo pase con «Añadir a la Gallery» los saca sin volver a analizar.
 
-Al terminar, el cabezal y la página vuelven a donde estaban, y los frames temporales se borran.
+Al terminar, el cabezal y la página vuelven a donde estaban, y los frames temporales se borran. «Guardar como predeterminado» recuerda los ajustes de la ventana.
 
 ## Instalación
 1. Descarga el repo y haz **doble clic en `install.command`**. La primera vez macOS puede bloquearlo: clic derecho › Abrir.

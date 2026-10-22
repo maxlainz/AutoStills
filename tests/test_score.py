@@ -89,7 +89,7 @@ def test_worker_picks_sharpest_frame_from_video(tmp_path):
     _write_video(tmp_path / "export.avi", a + b)
     job = {"source": "video", "video": str(tmp_path / "export.avi"), "video_first_frame": 1000,
            "shots": [{"id": "A", "start": 1000, "end": 1030}, {"id": "B", "start": 1030, "end": 1060}],
-           "preset": "gallery", "n": 1}
+           "preset": "gallery"}
     res = worker.run(job)
     picks = {s["id"]: [p["frame"] for p in s["picks"]] for s in res["shots"]}
     assert picks["A"] == [1017] and 1042 <= picks["B"][0] <= 1046
@@ -102,7 +102,7 @@ def test_worker_frames_source_and_n(tmp_path):
         p = tmp_path / f"{f}.png"
         cv2.imwrite(str(p), blurred(0 if k in (6, 14) else 3))
         frames[str(f)] = str(p)
-    job = {"source": "frames", "frames": frames, "shots": [{"id": "S", "start": 2000, "end": 2100}], "n": 2}
+    job = {"source": "frames", "frames": frames, "shots": [{"id": "S", "start": 2000, "end": 2100}], "min": 2, "max": 2}
     res = json.loads(json.dumps(worker.run(job), default=worker._jsonable))
     assert sorted(p["frame"] for p in res["shots"][0]["picks"]) == [2030, 2070]
 
@@ -111,7 +111,7 @@ def test_missing_frame_is_skipped_not_fatal(tmp_path):
     p = tmp_path / "ok.png"
     cv2.imwrite(str(p), PATTERN)
     job = {"source": "frames", "frames": {"5": "/no/existe.png", "6": str(p)},
-           "shots": [{"id": "x", "start": 0, "end": 10}, {"id": "y", "start": 10, "end": 20}]}
+           "shots": [{"id": "x", "start": 0, "end": 10}, {"id": "y", "start": 10, "end": 20}], "min": 1}
     res = {s["id"]: s for s in worker.run(job)["shots"]}
     assert [p["frame"] for p in res["x"]["picks"]] == [6] and "frames_ilegibles:1" in res["x"]["flags"]
     assert res["y"]["flags"] == ["sin_frames"]
@@ -119,7 +119,7 @@ def test_missing_frame_is_skipped_not_fatal(tmp_path):
 
 def test_n_above_candidates(tmp_path):
     imgs = [blurred(i % 4) for i in range(60)]
-    res = worker.analyse_shot(list(range(60)), lambda f: imgs[f], n=12)
+    res = worker.analyse_shot(list(range(60)), lambda f: imgs[f], min_n=12, max_n=12)
     assert len(res["picks"]) == 12
 
 
@@ -152,7 +152,30 @@ def test_check_and_mixed_sources(tmp_path):
     cv2.imwrite(sampled["115"], blurred(3))
     cv2.imwrite(sampled["116"], blurred(0))
     job = {"source": "video", "video": str(tmp_path / "e.avi"), "video_first_frame": 100,
-           "shots": [{"id": "A", "start": 100, "end": 110}, {"id": "B", "start": 110, "end": 120, "frames": sampled}]}
+           "shots": [{"id": "A", "start": 100, "end": 110}, {"id": "B", "start": 110, "end": 120, "frames": sampled}],
+           "min": 1, "max": 1}
     res = {s["id"]: s for s in worker.run(job)["shots"]}
     assert res["A"]["analysed"] == 10 and [p["frame"] for p in res["A"]["picks"]] == [108]
     assert res["B"]["analysed"] == 2 and [p["frame"] for p in res["B"]["picks"]] == [116]
+
+
+def test_two_framings_give_two_stills():
+    def scene(x):  # textura con un objeto grande y claro en la posición x: la cámara ha cambiado de encuadre
+        im = (PATTERN // 3).copy()
+        im[100:440, x:x + 300] = np.clip(PATTERN[100:440, x:x + 300].astype(int) + 140, 0, 255)
+        return im
+    left, right = scene(60), scene(600)
+    imgs = [cv2.GaussianBlur(left, (0, 0), 0.3 * abs(i - 12) + 0.01) for i in range(30)] + \
+           [cv2.GaussianBlur(right, (0, 0), 0.3 * abs(i - 45) + 0.01) for i in range(30, 60)]
+    res = worker.analyse_shot(list(range(60)), lambda f: imgs[f], max_n=3)
+    assert res["framings"] == 2 and sorted(p["frame"] for p in res["picks"]) == [12, 45]
+    assert len(worker.analyse_shot(list(range(60)), lambda f: imgs[f], max_n=1)["picks"]) == 1
+
+
+def test_gate_drops_short_and_soft_shots():
+    res = [{"id": i, "picks": [{"frame": 1}], "flags": [], "best_sharp": v}
+           for i, v in (("a", 900.0), ("b", 1000.0), ("c", 1100.0), ("soft", 100.0), ("short", 1000.0))]
+    worker._gate(res, {"a": 50, "b": 50, "c": 50, "soft": 50, "short": 8})
+    kept = {r["id"]: bool(r["picks"]) for r in res}
+    assert kept == {"a": True, "b": True, "c": True, "soft": False, "short": False}
+    assert "descartado:blando" in res[3]["flags"] and "descartado:corto" in res[4]["flags"]

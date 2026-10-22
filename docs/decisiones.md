@@ -44,7 +44,7 @@ Una entrada por decisión: contexto, opciones, elección, fecha. Nunca se borra 
 - **Elección**: solo Mac, Resolve Studio ≥ 21.1. Se puede usar Apple Vision (pyobjc). Windows y Resolve 19/20, fuera.
 - 2026-10-22, entrevista de alcance.
 
-## D10 — Stills por plano: 1 por defecto, ajustable
+## D10 — Stills por plano: 1 por defecto, ajustable (**sustituida por D19**)
 - **Elección**: 1 por defecto, ajustable en la ventana (1–5). Con más de uno, frames distintos entre sí (no consecutivos casi iguales).
 - 2026-10-22, entrevista de alcance.
 
@@ -73,7 +73,7 @@ Una entrada por decisión: contexto, opciones, elección, fecha. Nunca se borra 
 - **Elección**: **todos**: nitidez, movimiento, exposición, rack focus, bordes del plano; presencia de caras, ojos, boca, orientación, cara completa, calidad de cara; saliencia, estética (a prueba, D7); representativo del grade, rango tonal, piel visible; los marcadores mandan, diversidad con N stills, no duplicar clips repetidos, saltar títulos/generadores/texto. El owner no añade más por ahora.
 - 2026-10-22.
 
-## D15 — Boceto de la ventana aprobado
+## D15 — Boceto de la ventana aprobado (**sustituido por D18**)
 - **Contexto**: el boceto en texto del 2026-10-22 (norma `entrevista.md`): timeline y número de planos; preset (Gallery de referencia · Miniatura/redes · Contact sheet); stills por plano; pistas; todo el timeline o clips seleccionados; «Marcadores mandan» con su color; ajustes avanzados plegados (pesos); nombre del álbum; barra de progreso con plano actual y tiempo restante; Cancelar / Sacar stills. Al terminar, un resumen: planos sin cara, sin ningún frame nítido y resueltos por marcador. Cada still se etiqueta «CLIP · TC».
 - **Elección**: **aprobado por el owner** tal cual. Cualquier cambio posterior se enseña antes como boceto.
 - 2026-10-22.
@@ -94,6 +94,38 @@ Una entrada por decisión: contexto, opciones, elección, fecha. Nunca se borra 
   - **Si algunos planos no cuadran**: se mezcla. Los que cuadran se analizan con el export y los demás por muestreo; el resumen final dice qué vía usó cada plano.
   - **Coste**: dos pasadas. Lo barato (nitidez, movimiento, exposición) en todos los frames; caras y estética en los mejores de cada plano.
 - 2026-10-22. Cambia el boceto de la ventana (D15): fila nueva «Fuente», pedida por el owner.
+
+## D18 — Ventana v2: tres pasos y botón «Analizar»
+- **Contexto**: primera impresión del owner al verla: no está claro qué paso va, y «Sacar stills» suena a exportar.
+- **Elección** (boceto aprobado tal cual):
+  - Tres bloques numerados: **1 · Qué planos** (pistas, todo o seleccionados), **2 · Cómo elegir** (preset, stills por plano de mín a máx, fuente, respetar marcadores con su color) y **3 · Qué hacer con los elegidos** (marcar en el timeline, añadir a la Gallery con su álbum).
+  - Barra con el paso en curso: 1 Comprobar el export · 2 Analizar · 3 Marcar o añadir · 4 Listo.
+  - Botón **«Analizar»** y un resumen final con lo que se ha hecho.
+- 2026-10-22. Sustituye a D15.
+
+## D19 — Stills por plano: de 0 a X (por defecto 0–3)
+- **Contexto**: un plano corto que es poco más que motion blur no debería dar still, y un plano largo con la cámara en movimiento puede tener varios encuadres. Sustituye a D10.
+- **Elección**: mínimo y máximo en la ventana, **0 y 3 por defecto**.
+  - **0 stills** si el plano es muy corto, o si su mejor frame queda claramente por debajo, en nitidez, de los planos normales **del mismo timeline**. La puntuación dentro del plano es relativa, así que hace falta esa comparación con el resto.
+  - **Más de 1** solo si el plano tiene encuadres claramente distintos: los frames se agrupan por composición a lo largo del tiempo y sale como mucho uno por grupo.
+  - Los umbrales son provisionales hasta la prueba con el owner.
+- 2026-10-22.
+
+## D20 — Marcadores en el timeline como salida, y se respetan al relanzar
+- **Contexto**: propuesta del owner. Si un pase deja marcadores, los siguientes no tienen que analizar, y el owner puede corregir a mano.
+- **Elección**:
+  - **Salida por defecto: solo marcadores** en el clip, del color elegido, con la marca `AutoStills` en sus datos y la puntuación en la nota. Añadirlos a la Gallery es una casilla aparte. Flujo típico: un pase marca, el owner revisa y corrige, y un segundo pase con «Añadir a la Gallery» ya no analiza.
+  - **Al relanzar se respetan**: un plano con algún marcador del color elegido (de AutoStills o del owner) no se analiza, y sus marcadores son sus stills. Para reanalizar un plano, se borran sus marcadores.
+- 2026-10-22.
+
+## D21 — Nombre de stills y marcadores: REC TC primero
+- **Contexto**: con el nombre del clip delante, los stills se ordenan por nombre de clip, que es arbitrario.
+- **Elección**: **«REC TC · CLIP»** (timecode del timeline y nombre del clip sin extensión), para la etiqueta del still y el nombre del marcador. Así salen en el orden de la peli.
+- 2026-10-22.
+
+## D22 — «Guardar como predeterminado»
+- **Elección**: un botón discreto en la esquina de la ventana guarda los ajustes actuales (pistas, todo o seleccionados, preset, mínimo y máximo, fuente, respetar marcadores, color, salidas) en `~/Library/Application Support/AutoStills/settings.json`. La ventana los carga al abrirse.
+- 2026-10-22.
 
 ## Pendientes
 - Pesos de cada preset (D6) y frames muestreados por plano: con una prueba contra stills elegidos por el owner.

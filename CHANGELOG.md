@@ -4,6 +4,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado
 
 ## [Unreleased]
 ### Añadido
+- Ventana v2 (D18): tres pasos, paso en curso, botón «Analizar». Marcadores en el timeline como salida por defecto y se respetan al relanzar (D20). De 0 a X stills por plano, uno por encuadre, con descarte de planos cortos o blandos (D19). Nombre «REC TC · CLIP» (D21). «Guardar como predeterminado» (D22).
 - Ventana de Resolve `AutoStills.py` (D15, D17): preset, stills por plano, pistas, todo o selección, fuente (último export o muestreo), marcadores, álbum; comprueba el export plano a plano, mezcla export y muestreo, hace Grab Still con etiqueta «CLIP · TC» y deja cabezal y página como estaban.
 - `install.command` de un doble clic (D11).
 - Worker de puntuación `autostills/` (bitácora 02): métricas baratas, Apple Vision (caras, ojos, boca, orientación, saliencia, texto, estética opcional), presets con pesos provisionales, elección de N stills con diversidad; lee el export una sola vez o frames muestreados; tolera frames ilegibles y errores por plano. 24 tests sobre frames sintéticos.
@@ -26,4 +27,4 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado
 
 ### Decidido
 - D1 (nombre AutoStills), D2 (método de la familia), D3 (público, MIT), D4 (nada del estudio en el repo), D5 (git y versiones).
-- Entrevista de alcance: D6 (varios usos con presets), D7 (nitidez, caras y ojos, exposición; estética experimental), D8 (álbum nuevo de la Gallery), D9 (solo Mac + Resolve Studio 21.1+), D10 (1 still por plano, ajustable), D11 (instalador de un paso con uv), D12 (protección de `main` y seguridad del repo), D13 (frames con `ExportCurrentFrameAsStill`), D14 (los 20 criterios en v0.1), D15 (boceto de la ventana aprobado), D16 (JEV a explorar en el futuro sobre una preselección), D17 (fuente: último export del timeline o muestreo, con mezcla por plano).
+- Entrevista de alcance: D6 (varios usos con presets), D7 (nitidez, caras y ojos, exposición; estética experimental), D8 (álbum nuevo de la Gallery), D9 (solo Mac + Resolve Studio 21.1+), D10 (1 still por plano, ajustable), D11 (instalador de un paso con uv), D12 (protección de `main` y seguridad del repo), D13 (frames con `ExportCurrentFrameAsStill`), D14 (los 20 criterios en v0.1), D15 (boceto de la ventana aprobado), D16 (JEV a explorar en el futuro sobre una preselección), D17 (fuente: último export del timeline o muestreo, con mezcla por plano), D18–D22 (ventana v2, 0–X stills, marcadores, REC TC primero, ajustes predeterminados).
