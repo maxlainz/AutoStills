@@ -2,9 +2,8 @@
 import AutoStills as A
 
 
-def item(track, start, end, path="a.mov", src=0, markers=None, name="clip.mov"):
-    return {"track": track, "start": start, "end": end, "path": path, "src": src, "markers": markers or {},
-            "name": name, "uid": f"{track}-{start}"}
+def item(track, start, end, path="a.mov", src=0, name="clip.mov"):
+    return {"track": track, "start": start, "end": end, "path": path, "src": src, "name": name, "uid": f"{track}-{start}"}
 
 
 def test_tc():
@@ -20,15 +19,17 @@ def test_upper_track_covers_lower():
 
 
 def test_repeated_media_and_markers():
-    shots = A.visible_shots([item(1, 0, 50, "a", src=100, markers={10: "Green", 20: "Blue", 30: "Green"}),
+    tlm = {10: "Green", 20: "Blue", 30: "Green", 60: "Green"}  # marcadores del timeline (D23), frames absolutos
+    shots = A.visible_shots([item(1, 0, 50, "a", src=100),
                              item(1, 50, 80, "a", src=130),    # mismo fichero, rango fuente solapado → repetido
                              item(1, 80, 100, "a", src=500)],  # mismo fichero, otro rango → plano nuevo
-                            marker_color="Green")
-    assert shots[0]["markers"] == [10, 30] and shots[1]["dup_of"] == shots[0]["id"] and shots[2]["dup_of"] is None
-    assert A.visible_shots([item(1, 0, 50, markers={10: "Green"})])[0]["markers"] == []  # sin respetar marcadores
-    # un marcador en la parte del clip que tapa la pista de encima no cuenta
-    covered = A.visible_shots([item(1, 0, 100, markers={10: "Green", 80: "Green"}), item(2, 0, 30, "b")], "Green")
-    assert next(s for s in covered if s["path"] == "a.mov")["markers"] == [80]
+                            "Green", tlm)
+    assert shots[0]["markers"] == [10, 30] and shots[1]["markers"] == [60]
+    assert shots[1]["dup_of"] == shots[0]["id"] and shots[2]["dup_of"] is None
+    assert A.visible_shots([item(1, 0, 50)], None, tlm)[0]["markers"] == []  # sin respetar marcadores
+    # un marcador en la parte del clip que tapa la pista de encima es del plano de encima
+    covered = A.visible_shots([item(1, 0, 100), item(2, 0, 30, "b")], "Green", {10: "Green", 80: "Green"})
+    assert {s["path"]: s["markers"] for s in covered} == {"a.mov": [80], "b": [10]}
 
 
 def test_pick_export():

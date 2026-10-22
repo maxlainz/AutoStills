@@ -20,5 +20,10 @@
 ## Cambios en la ventana
 - «Guardar ajustes como predeterminados» queda detrás de un botón «⋯» en la esquina (petición del owner).
 
+## Marcadores al timeline (D23)
+- El owner los quiere en el timeline, no en el clip. Se borraron los 54 marcadores de clip que había dejado la v2 (`DeleteMarkerByCustomData("AutoStills")` clip a clip; quedan 0 de clip y 0 de timeline).
+- Ahora se escriben con `Timeline.AddMarker(frame − inicio del timeline, …)` y se leen con `Timeline.GetMarkers()`. Supuesto por comprobar a ojo: la clave es el offset desde el inicio del timeline.
+- Al leer los marcadores de clip antes de borrarlos, la clave salió igual a la que se escribió (p. ej. 104 en un clip que empieza en 90000 con nombre 01:00:04:04 = 90104). Eso no dice dónde los dibujó Resolve; ya da igual.
+
 ## Siguiente paso
 - Que el owner relance la prueba: el export ya aparece. Siguen pendientes los supuestos de la bitácora 02: la posición de los marcadores, Grab Still en la Color page y el umbral de la comprobación.

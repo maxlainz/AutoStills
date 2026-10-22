@@ -14,7 +14,7 @@ Se lanzará desde Resolve: **Workspace › Scripts › AutoStills**.
 3. Puntúa cada frame (`docs/criterios.md`): nitidez, movimiento, exposición, foco, caras (ojos, boca, orientación, cara completa), composición, texto en pantalla, representatividad, rango tonal y piel.
 4. Elige **de 0 a X stills por plano** (por defecto 0–3): ninguno en un plano muy corto o blando comparado con el resto del timeline, y uno por encuadre distinto si la cámara cambia de encuadre dentro del plano.
 5. **Qué hacer con los elegidos**:
-   - **Marcar en el timeline** (por defecto): marcadores del color elegido, con el nombre «REC TC · CLIP».
+   - **Marcar en el timeline** (por defecto): marcadores de timeline del color elegido, con el nombre «REC TC · CLIP».
    - **Añadir a la Gallery**: Grab Still a un álbum nuevo, con la misma etiqueta.
    - Al relanzar, un plano que ya tiene marcadores de ese color no se analiza: sus marcadores son sus stills. Flujo típico: un pase marca, corriges a mano moviendo o borrando marcadores, y un segundo pase con «Añadir a la Gallery» los saca sin volver a analizar.
 
