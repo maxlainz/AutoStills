@@ -53,4 +53,4 @@ Una regla para todas las métricas: **se comparan dentro del plano** (ranking), 
 
 ## Por decidir
 - Pesos de cada preset y umbrales: con una prueba sobre timelines reales, el owner elige a mano y se compara (norma `prediccion-antes-de-medir.md`).
-- Cuántos frames se muestrean por plano (coste ~0,5 s/frame, H2).
+- Cuántos frames se muestrean por plano cuando no hay export válido (coste ~0,5 s/frame, H4). Con export se analizan todos (D17).
