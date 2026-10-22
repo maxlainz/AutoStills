@@ -32,12 +32,22 @@
   7. Las cajas de texto pegadas al borde superior o izquierdo se perdían.
 - Hay 4 tests de regresión nuevos (24 en total). En el clip real se mantienen los frames 380 y 412; el tercero pasa del 390 al 399.
 
+## Ventana de Resolve e instalador
+- `AutoStills.py`: la ventana del boceto D15 con la fila «Fuente» (D17). Solo stdlib y un temporizador, así que Resolve no se congela mientras lee frames o analiza. La lógica pura (planos visibles por pista, clips repetidos, marcadores, último export, muestreo, timecode) tiene tests en `tests/test_gui.py`.
+- El worker gana el modo `check` (diferencia entre el export y Resolve, D17) y la mezcla por plano: un plano con sus propios frames se analiza con ellos aunque la fuente sea el vídeo.
+- `install.command`: instala uv si falta, copia el script a `Scripts/Utility` y crea el entorno en `~/Library/Application Support/AutoStills/.venv` (176 MB). Probado con una carpeta de usuario falsa: Apple Vision disponible.
+- **Sin probar dentro de Resolve.** Supuestos que hay que verificar en la primera prueba:
+  1. las claves de `TimelineItem.GetMarkers()` son offsets desde el inicio del clip;
+  2. `GrabStill` necesita la Color page;
+  3. `MarkIn` de un trabajo de render es el frame de timeline del primer frame del fichero;
+  4. el umbral de 0,03 de la comprobación del export (frame graduado de Resolve frente al render);
+  5. el temporizador de UIManager dispara con `disp.On.Timeout` o con `disp.On.Tick.Timeout`.
+
 ## Pendiente
-- Ventana de Resolve (D15, D17) e `install.command` (D11).
 - Prueba de pesos con los marcadores del owner en una copia del timeline.
 - Comprobar en Resolve que la cola de render conserva los trabajos y da la ruta completa del fichero (D17).
 - Las constantes de ojos (`EAR_CLOSED`, `EAR_OPEN`) son a ojo; se ajustan con la prueba de pesos.
 
 ## Siguiente paso
-1. `install.command` y la ventana de Resolve.
+1. Primera prueba del owner en Resolve (supuestos de arriba).
 2. Prueba de pesos con los marcadores del owner.
