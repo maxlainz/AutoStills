@@ -1,0 +1,11 @@
+# D12: PRs semanales para actualizar las actions de la CI y las dependencias de uv; pasan por la misma CI.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
