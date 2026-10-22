@@ -64,7 +64,7 @@ Una entrada por decisión: contexto, opciones, elección, fecha. Nunca se borra 
 ## D13 — Frames para analizar: `ExportCurrentFrameAsStill`, a resolución de timeline
 - **Contexto**: hacía falta elegir cómo obtener los frames (`docs/investigacion.md` §2). Medida de la bitácora 01: la miniatura de la Color page es fija por clip y de 576×324 (H1); `ExportCurrentFrameAsStill` da el frame graduado a resolución de timeline, sin frames atrasados, en ~0,5 s (H2).
 - **Opciones**: miniaturas de la Color page; render de un proxy; `ExportCurrentFrameAsStill` frame a frame.
-- **Elección**: **`ExportCurrentFrameAsStill`** desde la Edit page, a una carpeta temporal, a resolución de timeline. Descartadas las miniaturas: baja resolución, y no todo son primeros planos (owner). El proxy queda como plan B si un timeline largo lo hace necesario.
+- **Elección** (**matizada por D17**: ahora es la fuente secundaria): **`ExportCurrentFrameAsStill`** desde la Edit page, a una carpeta temporal, a resolución de timeline. Descartadas las miniaturas: baja resolución, y no todo son primeros planos (owner). El proxy queda como plan B si un timeline largo lo hace necesario.
 - 2026-10-22. El owner confirmó que la resolución baja no basta y que el objetivo es quitarse el rato de elegir el still a mano.
 
 ## D14 — Los 20 criterios de selección entran en v0.1
@@ -82,6 +82,18 @@ Una entrada por decisión: contexto, opciones, elección, fecha. Nunca se borra 
 - **Contexto**: investigación del 2026-10-22 (`docs/investigacion.md` §6).
 - **Elección**: **fuera de v0.1; se explora después** como juez final que elige entre 3–5 candidatos preseleccionados por los criterios baratos, no sobre todos los frames. Al owner le «pinta muy interesante» sobre una preselección. La API en la nube de TypeSafe queda descartada por confidencialidad.
 - 2026-10-22.
+
+## D17 — Fuente de análisis: el último export del timeline (mejor) o muestreo desde el timeline
+- **Contexto**: con el suelo de ~0,5 s por frame (H4), muestrear 10 frames por plano puede quedarse corto. Propuesta del owner: analizar un render ya hecho del timeline entero, así se puntúan **todos** los frames. El still final sale igualmente de Resolve con Grab Still en el frame ganador.
+- **Opciones**: solo export; export + muestreo; export + render de análisis nuevo + muestreo.
+- **Elección**:
+  - **Dos fuentes en la ventana**: «Desde el último export (mejor)», por defecto, y «Desde el timeline (muestreo)» (D13). Un render nuevo de análisis queda fuera, para no tocar la cola de render.
+  - **Qué cuenta como último export**: un trabajo de la cola de render de este timeline, completo, en un solo clip, que cubra el timeline entero y cuyo fichero exista. Si hay varios, el más reciente por fecha del fichero. La API no da la fecha de render ni dice si hubo flat pass.
+  - **Sin export válido**: diálogo para elegir el fichero a mano; si se cancela, se pasa a muestreo.
+  - **Comprobación previa**: 1 frame por plano exportado desde Resolve se compara con el mismo frame del render. Caza un grade cambiado, un montaje cambiado o un flat pass.
+  - **Si algunos planos no cuadran**: se mezcla. Los que cuadran se analizan con el export y los demás por muestreo; el resumen final dice qué vía usó cada plano.
+  - **Coste**: dos pasadas. Lo barato (nitidez, movimiento, exposición) en todos los frames; caras y estética en los mejores de cada plano.
+- 2026-10-22. Cambia el boceto de la ventana (D15): fila nueva «Fuente», pedida por el owner.
 
 ## Pendientes
 - Pesos de cada preset (D6) y frames muestreados por plano: con una prueba contra stills elegidos por el owner.

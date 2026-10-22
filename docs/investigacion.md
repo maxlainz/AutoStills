@@ -33,6 +33,8 @@ Recomendación inicial: B como camino principal, A a medir y C descartado.
 
 **Medido el 2026-10-22 (bitácora 01, D13):** A no sirve, porque la miniatura es fija por clip y de 576×324. Hay un cuarto camino, que es el elegido: **D. `Project.ExportCurrentFrameAsStill`** frame a frame. Da el frame graduado a resolución de timeline, en ~0,5 s, sin render y sin tocar la Gallery. Es exactamente el frame del cabezal (H3); el frame fuente es `GetLeftOffset()` + (frame − `GetStart()`); los ~0,5 s se van en mover el cabezal y son un suelo (H4).
 
+**Y un quinto, propuesto por el owner (D17), que pasa a ser el principal:** **E. el último export del timeline.** Es un render ya hecho, graduado y de cualquier códec que lea ffmpeg. Se analizan todos los frames. Antes, se comprueba frame a frame contra Resolve que el render sigue cuadrando con el timeline. La API no ofrece fecha de render ni marca de flat pass: `RenderJobInfo` da `TimelineName`, `MarkIn`/`MarkOut`, `RenderMode`, `TargetDir`, `OutputFilename`, códec y resolución, y `GetRenderJobStatus` da el estado.
+
 ## 3. Señales para puntuar un frame
 
 | Señal | Cómo | Coste | Dependencia |
