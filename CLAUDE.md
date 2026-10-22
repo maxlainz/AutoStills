@@ -9,7 +9,7 @@ Script para **DaVinci Resolve Studio** que elige y captura automáticamente el m
 CLAUDE.md              este router
 .claude/rules/         normas (una por archivo)        .claude/skills/   release · obsidian-vault
 .claude/settings.json  hooks: pull + issues al arrancar · bloqueo de rutas al escribir · bloqueo de commit en main · push al cerrar
-docs/decisiones.md     ADRs D1–D17                      docs/bitacora/    una entrada por sesión (00 arranque · 01 medida · 02 worker)
+docs/decisiones.md     ADRs D1–D22                      docs/bitacora/    una entrada por sesión (00 arranque · 01 medida · 02 worker)
 docs/investigacion.md  API de Resolve, caminos para obtener frames, señales, precedentes, stack candidato, JEV
 docs/criterios.md      los 20 criterios de selección, cómo medirlos y presets
 docs/roadmap.md        versiones previstas
@@ -58,7 +58,7 @@ make ci      # leak-check + lint + test — el gate de cada commit
 ```
 
 ## Estado y siguiente paso
-- **Estado (2026-10-22, bitácora 01)**: repo creado con el método de la familia y publicado con `main` protegida (D3, D12); investigación hecha; entrevista de alcance hecha (D6–D11: varios usos con presets, cuatro criterios con la estética experimental, álbum de Gallery, solo Mac + Resolve Studio 21.1+, 1 still por plano ajustable, instalador de un paso con uv); medido cómo sacar los frames → `ExportCurrentFrameAsStill` (D13, bitácora 01); brainstorming de criterios: los 20 entran (D14, `docs/criterios.md`); ventana aprobada (D15); JEV a explorar en el futuro sobre una preselección (D16); sin desfase de frame (H3) y suelo de ~0,5 s/frame (H4); fuente principal = el último export del timeline, con muestreo como alternativa y mezcla por plano (D17); worker de puntuación escrito y probado con frames sintéticos y un clip real (bitácora 02, H5); ventana de Resolve (`AutoStills.py`) e `install.command` escritos, **sin probar dentro de Resolve** (bitácora 02).
+- **Estado (2026-10-22, bitácora 01)**: repo creado con el método de la familia y publicado con `main` protegida (D3, D12); investigación hecha; entrevista de alcance hecha (D6–D11: varios usos con presets, cuatro criterios con la estética experimental, álbum de Gallery, solo Mac + Resolve Studio 21.1+, 1 still por plano ajustable, instalador de un paso con uv); medido cómo sacar los frames → `ExportCurrentFrameAsStill` (D13, bitácora 01); brainstorming de criterios: los 20 entran (D14, `docs/criterios.md`); ventana aprobada (D15); JEV a explorar en el futuro sobre una preselección (D16); sin desfase de frame (H3) y suelo de ~0,5 s/frame (H4); fuente principal = el último export del timeline, con muestreo como alternativa y mezcla por plano (D17); worker de puntuación escrito y probado con frames sintéticos y un clip real (bitácora 02, H5); ventana de Resolve v2 (`AutoStills.py`, D18–D22: pasos, 0–X stills, marcadores como salida, REC TC primero, ajustes guardados) e `install.command`, instalados en el Mac del owner y **sin probar dentro de Resolve** (bitácora 02).
 - **Después**: primera prueba del owner en Resolve (lista en la bitácora 02) · prueba de pesos con sus marcadores → v0.1.0.
 
 ## Pendiente del owner (2026-10-22)

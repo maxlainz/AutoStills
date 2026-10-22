@@ -39,8 +39,8 @@ Una regla para todas las métricas: **se comparan dentro del plano** (ranking), 
 ## E. Reglas de flujo
 | # | Regla | Cómo |
 |---|---|---|
-| 17 | Los marcadores mandan | Un marcador del color elegido dentro del clip fija el frame del still; ese plano no se analiza |
-| 18 | Diversidad con N stills | Los N stills de un plano deben estar separados en tiempo y ser distintos en contenido |
+| 17 | Los marcadores mandan | Los marcadores del color elegido dentro del clip son sus stills; ese plano no se analiza. AutoStills también los deja como salida (D20) |
+| 18 | Diversidad con N stills | Uno por encuadre distinto (`select.framings`), hasta el máximo; de 0 a X por plano con descarte de planos cortos o blandos frente al resto del timeline (D19) |
 | 19 | Clip repetido | El mismo media con un rango solapado dentro del timeline da un solo still |
 | 20 | Saltar lo que no es plano | Se saltan títulos, generadores y compuestos sin media; los frames con mucho texto en pantalla se penalizan (Vision texto) |
 

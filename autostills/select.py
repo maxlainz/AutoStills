@@ -23,6 +23,10 @@ ABSOLUTE = {"exposure", "face_present", "face_quality", "eyes_open", "mouth_clos
             "composition", "aesthetic", "no_text"}
 EDGE = 0.10        # criterio 5: fuera el primer y el último 10 % del plano
 CANDIDATES = 8     # candidatos por plano que pasan a la segunda pasada
+# D19. shortcut: umbrales a ojo hasta la prueba con el owner
+FRAMING_DIFF = 0.10    # diferencia media de la miniatura 16x9 a partir de la cual es «otro encuadre»
+MIN_SHOT = 12          # frames: un plano más corto no da still (con mínimo 0)
+SHARP_GATE = 0.30      # el mejor frame por debajo del 30 % de la nitidez mediana del timeline no da still
 
 
 def rank(values):
@@ -159,3 +163,21 @@ def pick(frames, scores, thumbs, n, min_gap=None, min_diff=0.03):
                                        and np.abs(thumbs[i] - thumbs[j]).mean() >= diff for j in chosen):
                 chosen.append(i)
     return chosen
+
+
+def framings(thumbs, ok):
+    """D19: tramos de encuadre a lo largo del plano. Uno nuevo empieza cuando la composición se aleja lo bastante
+    del primer frame del tramo (la cámara se ha movido). Un tramo demasiado corto se une al anterior."""
+    idx = [i for i, v in enumerate(ok) if v]
+    min_len = max(6, len(idx) // 8)
+    segs = []
+    for i in idx:
+        if segs and np.abs(thumbs[i] - thumbs[segs[-1][0]]).mean() <= FRAMING_DIFF:
+            segs[-1].append(i)
+        elif segs and len(segs[-1]) < min_len:
+            segs[-1].append(i)  # el tramo anterior aún es un barrido, no un encuadre: se alarga
+        else:
+            segs.append([i])
+    if len(segs) > 1 and len(segs[-1]) < min_len:
+        segs[-2] += segs.pop()
+    return segs

@@ -43,7 +43,22 @@
   4. el umbral de 0,03 de la comprobación del export (frame graduado de Resolve frente al render);
   5. el temporizador de UIManager dispara con `disp.On.Timeout` o con `disp.On.Tick.Timeout`.
 
+## Ventana v2 tras la primera impresión del owner (D18–D22)
+- El owner, al ver la ventana:
+  - no queda claro en qué paso va;
+  - «Sacar stills» suena a exportar;
+  - quiere de 0 a X stills por plano, marcadores en el timeline y respetarlos al relanzar;
+  - quiere REC TC primero en el nombre y un «guardar como predeterminado».
+- Hecho:
+  - Ventana con tres bloques numerados, el paso en curso en la barra y el botón «Analizar».
+  - Salida por defecto: marcadores en el clip (`customData` = `AutoStills`, la nota lleva preset y puntuación); la Gallery es opcional.
+  - Un plano con marcadores del color elegido no se analiza y sus marcadores son sus stills, aunque estén en la parte visible de un clip parcialmente tapado.
+  - Ajustes guardados en `settings.json`.
+- Worker: hasta X stills, uno por encuadre distinto (`select.framings`, la composición se compara con miniaturas de 16×9). Con mínimo 0 se descartan los planos de menos de 12 frames y los que tienen su mejor frame por debajo del 30 % de la nitidez mediana del timeline. Los umbrales son a ojo.
+- 34 tests.
+
 ## Pendiente
+- Supuesto nuevo que verificar en Resolve: el `frameId` de `TimelineItem.AddMarker` es un offset desde el inicio del clip, igual que al leer.
 - Prueba de pesos con los marcadores del owner en una copia del timeline.
 - Comprobar en Resolve que la cola de render conserva los trabajos y da la ruta completa del fichero (D17).
 - Las constantes de ojos (`EAR_CLOSED`, `EAR_OPEN`) son a ojo; se ajustan con la prueba de pesos.
