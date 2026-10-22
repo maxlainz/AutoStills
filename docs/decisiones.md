@@ -67,5 +67,12 @@ Una entrada por decisión: contexto, opciones, elección, fecha. Nunca se borra 
 - **Elección**: **`ExportCurrentFrameAsStill`** desde la Edit page, a una carpeta temporal, a resolución de timeline. Descartadas las miniaturas: baja resolución, y no todo son primeros planos (owner). El proxy queda como plan B si un timeline largo lo hace necesario.
 - 2026-10-22. El owner confirmó que la resolución baja no basta y que el objetivo es quitarse el rato de elegir el still a mano.
 
+## D14 — Los 20 criterios de selección entran en v0.1
+- **Contexto**: brainstorming de criterios con el owner (`docs/criterios.md`). Amplía D7.
+- **Opciones**: por familias (técnicos, personas, composición/estética, colorista, reglas de flujo).
+- **Elección**: **todos**: nitidez, movimiento, exposición, rack focus, bordes del plano; presencia de caras, ojos, boca, orientación, cara completa, calidad de cara; saliencia, estética (a prueba, D7); representativo del grade, rango tonal, piel visible; los marcadores mandan, diversidad con N stills, no duplicar clips repetidos, saltar títulos/generadores/texto. El owner no añade más por ahora.
+- 2026-10-22.
+
 ## Pendientes
-- Presets concretos y sus pesos (D6), boceto de la ventana.
+- Pesos de cada preset (D6) y frames muestreados por plano: con una prueba contra stills elegidos por el owner.
+- Aprobación del boceto de la ventana (en el chat del 2026-10-22).
