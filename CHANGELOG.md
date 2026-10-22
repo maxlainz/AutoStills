@@ -12,6 +12,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado
 - El último export no se encontraba: el fichero estaba en una subcarpeta que la API no da (H6), y `MarkIn` no es el rango renderizado (H7). Ahora se busca en subcarpetas y el inicio se lee del timecode del `.mov`; ya no hace falta que el render cubra todo el timeline (bitácora 03).
 
 ### Cambiado
+- Nombre de stills y marcadores: «0090217 · 01:00:08:17 · CLIP», con el frame absoluto delante para que Frame.io y cualquier lista ordenen bien (D24).
 - Los marcadores van en el timeline, no en el clip, y al relanzar se leen del timeline (D23).
 - «Guardar como predeterminado»: el «⋯» de la esquina se convierte en el botón en el mismo sitio (primer clic) y guarda (segundo clic).
 
@@ -40,4 +41,4 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado
 
 ### Decidido
 - D1 (nombre AutoStills), D2 (método de la familia), D3 (público, MIT), D4 (nada del estudio en el repo), D5 (git y versiones).
-- Entrevista de alcance: D6 (varios usos con presets), D7 (nitidez, caras y ojos, exposición; estética experimental), D8 (álbum nuevo de la Gallery), D9 (solo Mac + Resolve Studio 21.1+), D10 (1 still por plano, ajustable), D11 (instalador de un paso con uv), D12 (protección de `main` y seguridad del repo), D13 (frames con `ExportCurrentFrameAsStill`), D14 (los 20 criterios en v0.1), D15 (boceto de la ventana aprobado), D16 (JEV a explorar en el futuro sobre una preselección), D17 (fuente: último export del timeline o muestreo, con mezcla por plano), D18–D22 (ventana v2, 0–X stills, marcadores, REC TC primero, ajustes predeterminados), D23 (marcadores en el timeline).
+- Entrevista de alcance: D6 (varios usos con presets), D7 (nitidez, caras y ojos, exposición; estética experimental), D8 (álbum nuevo de la Gallery), D9 (solo Mac + Resolve Studio 21.1+), D10 (1 still por plano, ajustable), D11 (instalador de un paso con uv), D12 (protección de `main` y seguridad del repo), D13 (frames con `ExportCurrentFrameAsStill`), D14 (los 20 criterios en v0.1), D15 (boceto de la ventana aprobado), D16 (JEV a explorar en el futuro sobre una preselección), D17 (fuente: último export del timeline o muestreo, con mezcla por plano), D18–D22 (ventana v2, 0–X stills, marcadores, REC TC primero, ajustes predeterminados), D23 (marcadores en el timeline), D24 (frame absoluto en el nombre).

@@ -85,8 +85,10 @@ def test_sample_frames():
     assert A.sample_frames(0, 5, 12) == [0, 1, 2, 3, 4]
 
 
-def test_label_puts_rec_tc_first():
-    assert A.still_label("A003C010_260827_R1K0.mov", 90217, 25) == "01:00:08:17 · A003C010_260827_R1K0"
+def test_label_sorts_by_frame_then_tc():
+    assert A.still_label("A003C010_260827_R1K0.mov", 90217, 25) == "0090217 · 01:00:08:17 · A003C010_260827_R1K0"
+    labels = [A.still_label("c.mov", f, 25) for f in (95262, 90217, 100000)]
+    assert sorted(labels) == [labels[1], labels[0], labels[2]]  # orden alfabético = orden de la peli
 
 
 def test_settings_roundtrip(tmp_path):
