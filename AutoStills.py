@@ -161,8 +161,9 @@ def elide(text, n=44):
 
 
 def still_label(name, frame, fps):
-    """REC TC primero: los stills y los marcadores se ordenan en el orden de la peli, no por nombre de clip (D21)."""
-    return f"{tc(frame, fps)} · {os.path.splitext(name)[0]}"
+    """Frame absoluto del timeline primero, con ceros a la izquierda: ordena igual en cualquier sitio, también donde
+    el orden por TC falla (Frame.io, D24). Después el REC TC y el clip (D21)."""
+    return f"{int(frame):07d} · {tc(frame, fps)} · {os.path.splitext(name)[0]}"
 
 
 def load_settings(path=SETTINGS):

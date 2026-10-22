@@ -118,7 +118,7 @@ Una entrada por decisión: contexto, opciones, elección, fecha. Nunca se borra 
   - **Al relanzar se respetan**: un plano con algún marcador del color elegido (de AutoStills o del owner) no se analiza, y sus marcadores son sus stills. Para reanalizar un plano, se borran sus marcadores.
 - 2026-10-22.
 
-## D21 — Nombre de stills y marcadores: REC TC primero
+## D21 — Nombre de stills y marcadores: REC TC primero (**matizada por D24**)
 - **Contexto**: con el nombre del clip delante, los stills se ordenan por nombre de clip, que es arbitrario.
 - **Elección**: **«REC TC · CLIP»** (timecode del timeline y nombre del clip sin extensión), para la etiqueta del still y el nombre del marcador. Así salen en el orden de la peli.
 - 2026-10-22.
@@ -131,6 +131,11 @@ Una entrada por decisión: contexto, opciones, elección, fecha. Nunca se borra 
 - **Contexto**: primera prueba del owner. La v2 los ponía en el clip (`TimelineItem.AddMarker`), y el owner los quiere en el timeline.
 - **Elección**: `Timeline.AddMarker`, con el mismo color, nombre «REC TC · CLIP», nota y `customData` `AutoStills`. Al relanzar se leen los marcadores del timeline (`Timeline.GetMarkers`) del color elegido dentro del tramo visible de cada plano. Los marcadores de clip ya no cuentan.
 - Limpieza: a petición del owner se borraron los 54 marcadores de clip que había dejado la v2 en el timeline de prueba (todos con `customData` `AutoStills`; no había otros).
+- 2026-10-22.
+
+## D24 — Frame absoluto al principio del nombre
+- **Contexto**: Frame.io no ordenaba bien los stills por TC.
+- **Elección**: **«0090217 · 01:00:08:17 · CLIP»**: el frame absoluto del timeline con 7 cifras (orden alfabético = orden de la peli en cualquier herramienta), luego el REC TC y el clip. Para stills y marcadores.
 - 2026-10-22.
 
 ## Pendientes

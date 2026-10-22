@@ -9,7 +9,7 @@ Script para **DaVinci Resolve Studio** que elige y captura automáticamente el m
 CLAUDE.md              este router
 .claude/rules/         normas (una por archivo)        .claude/skills/   release · obsidian-vault
 .claude/settings.json  hooks: pull + issues al arrancar · bloqueo de rutas al escribir · bloqueo de commit en main · push al cerrar
-docs/decisiones.md     ADRs D1–D23                      docs/bitacora/    una entrada por sesión (00 arranque · 01 medida · 02 worker · 03 prueba en Resolve)
+docs/decisiones.md     ADRs D1–D24                      docs/bitacora/    una entrada por sesión (00 arranque · 01 medida · 02 worker · 03 prueba en Resolve)
 docs/investigacion.md  API de Resolve, caminos para obtener frames, señales, precedentes, stack candidato, JEV
 docs/criterios.md      los 20 criterios de selección, cómo medirlos y presets
 docs/roadmap.md        versiones previstas
