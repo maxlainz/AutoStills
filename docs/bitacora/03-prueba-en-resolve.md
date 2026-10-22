@@ -59,5 +59,18 @@ Se reprodujo el análisis fuera de Resolve: el render del timeline y los 49 plan
   2. Si no lo es, se desactivan un momento (`SetClipEnabled(False)`) los clips de las pistas de encima que lo tapan en ese frame, se saca el still y se reactivan en un `finally`.
   3. Si ni así queda current, no se saca el still y el resumen lo dice.
 
+## H14 — `GrabStill` falla a veces
+- El owner: con el arreglo de H13 dejaban de salir stills de los planos tapados por texto, con el mensaje «no se pudo poner su clip como actual».
+- Medido en el timeline de prueba, con un álbum temporal «AutoStills diagnóstico (se puede borrar)» cuyos stills se borraron después:
+  - En la Color page, `GetCurrentVideoItem()` da el clip de V1 aunque haya un título encima, y lo da al instante después de mover el cabezal (5 de 5).
+  - `GrabStill()` devuelve `None` de vez en cuando: el primero justo después de `OpenPage("color")` (1 de 3 sin pausa) y uno suelto con 0,6 s de pausa. Con pausas de 0,3 a 1,5 s, 9 de 9 bien.
+  - El primer plano del timeline es el que lleva el texto encima, y es el primer Grab tras cambiar de página: por eso parecía culpa del texto.
+  - El mensaje también engañaba: el clip sí era el current; era `GrabStill` el que no devolvía nada.
+- Arreglo:
+  - 1 s de pausa después de abrir la Color page;
+  - hasta 4 intentos de `GrabStill` separados 0,4 s;
+  - el resumen distingue «Resolve no devolvió el still» de «otro clip encima que no se pudo apartar».
+- El álbum de diagnóstico se queda vacío en la Gallery: la API no tiene función para borrar álbumes.
+
 ## Siguiente paso
 - Que el owner relance la prueba: el export ya aparece. Siguen pendientes los supuestos de la bitácora 02: la posición de los marcadores, Grab Still en la Color page y el umbral de la comprobación.
