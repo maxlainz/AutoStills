@@ -11,7 +11,7 @@ Una regla para todas las métricas: **se comparan dentro del plano** (ranking), 
 | 2 | Movimiento | Diferencia con los frames vecinos; flujo óptico si hace falta | numpy / OpenCV |
 | 3 | Exposición | % de luma > ~250 o < ~5 | numpy |
 | 4 | Rack focus | Curva de nitidez de la zona saliente a lo largo del plano; se prefiere el frame donde se estabiliza en el máximo | OpenCV |
-| 5 | Bordes del plano | Fuera el primer y último ~10 %; fuera frames negros y saltos bruscos de luma media (flash, fundido) | numpy |
+| 5 | Bordes del plano | Fuera el primer y último ~10 % (máx. 25 frames); fuera frames negros y saltos bruscos de luma media (flash, fundido) | numpy |
 
 ## B. Personas
 | # | Criterio | Cómo | Herramienta |
@@ -40,7 +40,7 @@ Una regla para todas las métricas: **se comparan dentro del plano** (ranking), 
 | # | Regla | Cómo |
 |---|---|---|
 | 17 | Los marcadores mandan | Los marcadores del color elegido dentro del clip son sus stills; ese plano no se analiza. AutoStills también los deja como salida (D20) |
-| 18 | Diversidad con N stills | Uno por encuadre distinto (`select.framings`), hasta el máximo; de 0 a X por plano con descarte de planos cortos o blandos frente al resto del timeline (D19) |
+| 18 | Diversidad con N stills | Uno por encuadre distinto, medido por el movimiento de la cámara (`metrics.camera_step`, `select.framings`, H11), hasta el máximo; de 0 a X por plano con descarte de planos cortos o blandos frente al resto del timeline (D19) |
 | 19 | Clip repetido | El mismo media con un rango solapado dentro del timeline da un solo still |
 | 20 | Saltar lo que no es plano | Se saltan títulos, generadores y compuestos sin media; los frames con mucho texto en pantalla se penalizan (Vision texto) |
 

@@ -25,5 +25,26 @@
 - Ahora se escriben con `Timeline.AddMarker(frame − inicio del timeline, …)` y se leen con `Timeline.GetMarkers()`. Supuesto por comprobar a ojo: la clave es el offset desde el inicio del timeline.
 - Al leer los marcadores de clip antes de borrarlos, la clave salió igual a la que se escribió (p. ej. 104 en un clip que empieza en 90000 con nombre 01:00:04:04 = 90104). Eso no dice dónde los dibujó Resolve; ya da igual.
 
+## «No ha hecho algún still que debería» (owner)
+Se reprodujo el análisis fuera de Resolve: el render del timeline y los 49 planos leídos por el MCP en solo lectura, con el preset gallery, de 0 a 3 (`scratchpad/diag/run.py`, fuera del repo). Salieron tres problemas:
+1. **H9 — El plano largo del final (1253 frames) fallaba con `IndexError` y se quedaba sin still.** `segs[-2] += segs.pop()` en `select.framings`: la lista encoge antes de asignar. Solo pasa con dos tramos y el último corto. Corregido, con test de regresión.
+2. **H10 — Un plano se daba por «repetido» cuando no lo era.** Compartía 12 frames de 81 del mismo clip de cámara con otro plano. Ahora es repetido solo si se solapa más de la mitad del rango fuente del más corto.
+3. **H11 — Los encuadres se medían mal.** Comparar miniaturas de 16×9 no ve un pull-back en una escena oscura (distancia 0,06 frente al umbral de 0,10), y con contraste normalizado los actores moviéndose parecen encuadres nuevos.
+   - Ahora se mide **la cámara**: flujo óptico de puntos con RANSAC (`metrics.camera_step`), escala y desplazamiento acumulados. Hay otro encuadre cuando la cámara se acerca o se aleja un 25 % o se desplaza un cuarto del cuadro; un encuadre tiene que durar ≥ 1 s; los tramos intermedios en los que la cámara está moviéndose se unen al siguiente; los vecinos con la misma posición típica se juntan.
+   - Medido: el plano largo hace un pull-back a escala 0,57 en ~4 s y después se queda quieto → **2 encuadres**. El plano del señor de las cartas (escala 1,0, 3 % de desplazamiento) da 1. Coste: ~5 ms por frame.
+   - Además, el recorte de bordes del 10 % se limita a 25 frames: en el plano largo eran 5 s y se comía el encuadre cerrado del principio.
+- Resultado en el timeline entero: los 49 planos dan still; 55 stills; 6 planos con 2 (cámaras que se mueven, el plano largo incluido); 103 s con el export.
+
+## H12 — Codificación de ficheros
+- Al ejecutar la ventana desde el MCP, Python abrió el script como ASCII. Una ruta con acentos rompería el job. Ahora todos los `open()` de texto llevan `encoding="utf-8"` y el worker se lanza con `PYTHONUTF8=1`.
+
+## Ventana
+- El owner ve textos que se pisan o desaparecen detrás de otros elementos. Cambios a ciegas, sin captura todavía:
+  - etiquetas de ancho fijo para que los controles queden en columna;
+  - textos largos con ajuste de línea y altura mínima;
+  - la línea del export en su propia fila;
+  - ventana de 680×760 como mínimo.
+- No se pudo hacer la captura desde el MCP: la ventana no aparece en la pantalla capturada. Hace falta una captura del owner.
+
 ## Siguiente paso
 - Que el owner relance la prueba: el export ya aparece. Siguen pendientes los supuestos de la bitácora 02: la posición de los marcadores, Grab Still en la Color page y el umbral de la comprobación.

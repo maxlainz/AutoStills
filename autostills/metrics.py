@@ -24,6 +24,23 @@ def sharpness(gray, box=None):
     return float(cv2.Laplacian(gray, cv2.CV_64F, ksize=3).var())
 
 
+def camera_step(prev_gray, gray):
+    """Movimiento de cámara entre dos frames → (escala, dx, dy), desplazamiento en anchos de cuadro. Flujo óptico de
+    puntos de toda la imagen con RANSAC: manda el fondo, no lo que hacen los actores (D19, bitácora 03)."""
+    p0 = cv2.goodFeaturesToTrack(prev_gray, 300, 0.01, 8)
+    if p0 is None or len(p0) < 12:
+        return 1.0, 0.0, 0.0
+    p1, st, _ = cv2.calcOpticalFlowPyrLK(prev_gray, gray, p0, None)
+    ok = st.ravel() == 1
+    if ok.sum() < 12:
+        return 1.0, 0.0, 0.0
+    m, _ = cv2.estimateAffinePartial2D(p0[ok], p1[ok], method=cv2.RANSAC, ransacReprojThreshold=2.0)
+    if m is None:
+        return 1.0, 0.0, 0.0
+    w = prev_gray.shape[1]
+    return float(np.hypot(m[0, 0], m[1, 0])), float(m[0, 2]) / w, float(m[1, 2]) / w
+
+
 def frame_metrics(img_bgr, prev_gray=None):
     """Devuelve (métricas, gray) — `gray` se pasa como `prev_gray` al frame siguiente para medir movimiento."""
     small, gray = _gray_small(img_bgr)
@@ -40,6 +57,7 @@ def frame_metrics(img_bgr, prev_gray=None):
         "clipped": float((gray > 250).mean() + (gray < 5).mean()),
         "tonal": float(p98 - p2),
         "skin": float((skin > 0).mean()),
+        "cam": (1.0, 0.0, 0.0) if prev_gray is None or prev_gray.shape != gray.shape else camera_step(prev_gray, gray),
         # miniatura 16x9 en color: sirve para «representativo del plano» (14) y para la diversidad (18)
         "thumb": cv2.resize(small, (16, 9), interpolation=cv2.INTER_AREA).astype(np.float32).ravel() / 255.0,
     }

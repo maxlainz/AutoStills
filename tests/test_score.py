@@ -160,16 +160,27 @@ def test_check_and_mixed_sources(tmp_path):
 
 
 def test_two_framings_give_two_stills():
-    def scene(x):  # textura con un objeto grande y claro en la posición x: la cámara ha cambiado de encuadre
-        im = (PATTERN // 3).copy()
-        im[100:440, x:x + 300] = np.clip(PATTERN[100:440, x:x + 300].astype(int) + 140, 0, 255)
+    # la cámara panea un 40 % del cuadro entre el frame 50 y el 60: dos encuadres, cada uno con su frame nítido
+    big = cv2.resize(PATTERN, (1800, 540))
+    def frame(i):
+        x = int(np.clip((i - 50) / 10, 0, 1) * 0.4 * 960)
+        sigma = 0.3 * abs(i - (25 if i < 55 else 95)) + 0.01
+        return cv2.GaussianBlur(big[:, x:x + 960], (0, 0), sigma)
+    imgs = [frame(i) for i in range(120)]
+    res = worker.analyse_shot(list(range(120)), lambda f: imgs[f], max_n=3)
+    assert res["framings"] == 2 and sorted(p["frame"] for p in res["picks"]) == [25, 95]
+    assert len(worker.analyse_shot(list(range(120)), lambda f: imgs[f], max_n=1)["picks"]) == 1
+
+
+def test_actor_moving_is_not_a_new_framing():
+    # cámara quieta, un objeto grande cruza el cuadro: sigue siendo un solo encuadre
+    def frame(i):
+        im = PATTERN.copy()
+        x = 60 + i * 15
+        im[150:400, x:x + 200] = 255
         return im
-    left, right = scene(60), scene(600)
-    imgs = [cv2.GaussianBlur(left, (0, 0), 0.3 * abs(i - 12) + 0.01) for i in range(30)] + \
-           [cv2.GaussianBlur(right, (0, 0), 0.3 * abs(i - 45) + 0.01) for i in range(30, 60)]
-    res = worker.analyse_shot(list(range(60)), lambda f: imgs[f], max_n=3)
-    assert res["framings"] == 2 and sorted(p["frame"] for p in res["picks"]) == [12, 45]
-    assert len(worker.analyse_shot(list(range(60)), lambda f: imgs[f], max_n=1)["picks"]) == 1
+    imgs = [frame(i) for i in range(40)]
+    assert worker.analyse_shot(list(range(40)), lambda f: imgs[f], max_n=3)["framings"] == 1
 
 
 def test_gate_drops_short_and_soft_shots():
@@ -179,3 +190,13 @@ def test_gate_drops_short_and_soft_shots():
     kept = {r["id"]: bool(r["picks"]) for r in res}
     assert kept == {"a": True, "b": True, "c": True, "soft": False, "short": False}
     assert "descartado:blando" in res[3]["flags"] and "descartado:corto" in res[4]["flags"]
+
+
+def test_framings_two_segments_last_short():
+    # regresión (bitácora 03): dos tramos y el último corto tumbaba el plano largo con IndexError
+    poses = [(1.0, 0.0, 0.0)] * 40 + [(0.5, 0.0, 0.0)] * 3
+    segs = select.framings(poses, [True] * 43)
+    assert len(segs) == 1 and len(segs[0]) == 43
+    # el caso real (bitácora 03): un pull-back a escala 0,57 en ~4 s y luego quieto → dos encuadres
+    pull = [(1.0 - 0.43 * min(i / 100, 1), 0.0, 0.0) for i in range(1253)]
+    assert len(select.framings(pull, [True] * 1253)) == 2

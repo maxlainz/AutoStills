@@ -48,7 +48,7 @@ def analyse_shot(frames, images, preset="gallery", min_n=0, max_n=3, aesthetics=
     cheap_w = {k: w for k, w in weights.items() if k in CHEAP}
     cheap = select.score([feats[i] for i in idx], cheap_w)
     by_frame = dict(zip(idx, cheap))
-    segs = select.framings([m["thumb"] for m in mets], ok)
+    segs = select.framings(select.camera_poses(mets), ok)
     per_seg = max(2, -(-max(select.CANDIDATES, max_n) // len(segs)))
     cand = []
     for seg in segs:  # candidatos de cada encuadre, para que un encuadre corto no se quede sin representante
@@ -188,7 +188,7 @@ def _jsonable(o):
 
 if __name__ == "__main__":
     job_path, result_path = sys.argv[1], sys.argv[2]
-    with open(job_path) as fh:
+    with open(job_path, encoding="utf-8") as fh:
         result = run(json.load(fh))
-    with open(result_path, "w") as fh:
+    with open(result_path, "w", encoding="utf-8") as fh:
         json.dump(result, fh, indent=1, default=_jsonable)

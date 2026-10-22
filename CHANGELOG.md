@@ -4,6 +4,11 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado
 
 ## [Unreleased]
 ### Corregido
+- El plano largo del final se quedaba sin still por un `IndexError` en `select.framings` (H9).
+- Un plano que compartía unos frames del mismo clip se daba por repetido; ahora hace falta solapar más de la mitad (H10).
+- Los encuadres se miden por el movimiento de la cámara (flujo óptico), no por la miniatura; un pull-back en una escena oscura ya da dos encuadres. El recorte de bordes del plano se limita a 25 frames (H11).
+- Ficheros de texto siempre en UTF-8, y el worker con `PYTHONUTF8=1` (H12).
+- Ventana: etiquetas en columna, textos que se ajustan, más espacio.
 - El último export no se encontraba: el fichero estaba en una subcarpeta que la API no da (H6), y `MarkIn` no es el rango renderizado (H7). Ahora se busca en subcarpetas y el inicio se lee del timecode del `.mov`; ya no hace falta que el render cubra todo el timeline (bitácora 03).
 
 ### Cambiado
