@@ -19,6 +19,9 @@ def test_upper_track_covers_lower():
 
 
 def test_repeated_media_and_markers():
+    # el caso real de la bitácora 03: mismo clip, 12 frames compartidos de 81 → no es repetido
+    real = A.visible_shots([item(1, 0, 31, "c", src=1610), item(1, 100, 181, "c", src=1541)])
+    assert real[1]["dup_of"] is None
     tlm = {10: "Green", 20: "Blue", 30: "Green", 60: "Green"}  # marcadores del timeline (D23), frames absolutos
     shots = A.visible_shots([item(1, 0, 50, "a", src=100),
                              item(1, 50, 80, "a", src=130),    # mismo fichero, rango fuente solapado → repetido

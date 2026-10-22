@@ -47,7 +47,8 @@ def visible_shots(items, marker_color=None, tl_markers=None):
     """`items`: clips con media de las pistas elegidas, dicts {track, start, end, name, path, src, uid}.
     `tl_markers`: marcadores del timeline {frame absoluto: color} (D23: van en el timeline, no en el clip).
     La pista de encima tapa a la de abajo (es lo que sale en el render); de cada clip se queda su tramo visible más
-    largo. Criterio 19: un clip que repite media ya usada (mismo fichero, rango fuente solapado) no da otro still.
+    largo. Criterio 19: un clip que repite media ya usada (mismo fichero, más de la mitad del rango fuente solapado)
+    no da otro still.
     Criterio 17 / D20: los marcadores del color elegido dentro del tramo son los stills del plano (no se analiza)."""
     shots = []
     for it in sorted(items, key=lambda i: (i["start"], -i["track"])):
@@ -58,7 +59,9 @@ def visible_shots(items, marker_color=None, tl_markers=None):
             continue
         a, b = max(segs, key=lambda p: p[1] - p[0])
         src = (it["src"] + a - it["start"], it["src"] + b - it["start"])
-        dup = next((s["id"] for s in shots if s["path"] == it["path"] and s["src"][0] < src[1] and src[0] < s["src"][1]),
+        # repetido = la mayor parte del material ya está en otro plano; compartir unos frames del mismo clip no basta
+        dup = next((s["id"] for s in shots if s["path"] == it["path"]
+                    and min(s["src"][1], src[1]) - max(s["src"][0], src[0]) > 0.5 * min(src[1] - src[0], s["src"][1] - s["src"][0])),
                    None)
         marks = sorted(f for f, color in (tl_markers or {}).items() if marker_color and color == marker_color and a <= f < b)
         shots.append({"id": f"{it['track']}:{it['start']}", "name": it["name"], "path": it["path"], "uid": it.get("uid"),
@@ -144,8 +147,9 @@ def pick_export(jobs, tl_name, tl_start, fps, locate=find_file, mtime=os.path.ge
 
 
 def sample_frames(start, end, k=SAMPLES_PER_SHOT):
-    """k frames repartidos por el plano, sin el primer y el último 10 % (criterio 5)."""
-    a, b = start + (end - start) // 10, end - (end - start) // 10
+    """k frames repartidos por el plano, sin el primer y el último 10 % (máx. 25 frames, criterio 5)."""
+    edge = min((end - start) // 10, 25)
+    a, b = start + edge, end - edge
     if b - a <= k:
         return list(range(a, max(b, a + 1)))
     return sorted({a + round(i * (b - 1 - a) / (k - 1)) for i in range(k)})
@@ -158,7 +162,7 @@ def still_label(name, frame, fps):
 
 def load_settings(path=SETTINGS):
     try:
-        with open(path) as fh:
+        with open(path, encoding="utf-8") as fh:
             return json.load(fh)
     except (OSError, ValueError):
         return {}
@@ -166,7 +170,7 @@ def load_settings(path=SETTINGS):
 
 def save_settings(values, path=SETTINGS):
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w") as fh:
+    with open(path, "w", encoding="utf-8") as fh:
         json.dump(values, fh, indent=1)
 
 
@@ -226,40 +230,52 @@ def gui(resolve, bmd):
     def section(text):
         return ui.Label({"Text": f"<b>{text}</b>", "Weight": 0})
 
-    track_boxes = [ui.CheckBox({"ID": f"V{t}", "Text": f"V{t}", "Weight": 0,
+    track_boxes = [ui.CheckBox({"ID": f"V{t}", "Text": f"V{t}", "Weight": 0, "MinimumSize": [56, 0],
                                 "Checked": t in cfg.get("tracks", [1])}) for t in range(1, n_tracks + 1)]
-    win = disp.AddWindow({"ID": "AutoStills", "WindowTitle": f"AutoStills {__version__}", "Geometry": [200, 120, 600, 640]},
-        ui.VGroup({"Spacing": 6}, [
+    LW = 130  # ancho fijo de las etiquetas de la izquierda: los controles quedan en columna y no se pisan
+
+    def row(label, *widgets):
+        return ui.HGroup({"Weight": 0, "Spacing": 8},
+                         [ui.Label({"Text": label, "Weight": 0, "MinimumSize": [LW, 22], "MaximumSize": [LW, 22]})]
+                         + list(widgets))
+
+    win = disp.AddWindow({"ID": "AutoStills", "WindowTitle": f"AutoStills {__version__}",
+                          "Geometry": [200, 100, 680, 760], "MinimumSize": [620, 700]},
+        ui.VGroup({"Spacing": 8}, [
             ui.HGroup({"Weight": 0}, [section("1 · Qué planos"), ui.HGap(0, 1),
                                       ui.Button({"ID": "More", "Text": "⋯", "Weight": 0, "Flat": True,
-                                                 "ToolTip": "Más opciones"})]),
+                                                 "MinimumSize": [32, 22], "ToolTip": "Más opciones"})]),
             ui.HGroup({"ID": "MoreRow", "Weight": 0, "Hidden": True}, [  # UIManager no tiene menús: fila plegable
                 ui.HGap(0, 1), ui.Button({"ID": "Save", "Text": "Guardar ajustes como predeterminados", "Weight": 0})]),
-            ui.Label({"ID": "Head", "Weight": 0}),
-            ui.HGroup({"Weight": 0}, [ui.Label({"Text": "Pistas:", "Weight": 0})] + track_boxes
-                      + [ui.HGap(20, 0), ui.ComboBox({"ID": "Scope"})]),
+            ui.Label({"ID": "Head", "Weight": 0, "WordWrap": True, "MinimumSize": [0, 36]}),
+            row("Pistas", *track_boxes, ui.HGap(0, 1)),
+            row("Planos", ui.ComboBox({"ID": "Scope", "MinimumSize": [240, 0]}), ui.HGap(0, 1)),
+            ui.VGap(6),
             section("2 · Cómo elegir"),
-            ui.HGroup({"Weight": 0}, [ui.Label({"Text": "Preset:", "Weight": 0}), ui.ComboBox({"ID": "Preset"})]),
-            ui.HGroup({"Weight": 0}, [ui.Label({"Text": "Stills por plano: de", "Weight": 0}),
-                                      ui.SpinBox({"ID": "Min", "Minimum": 0, "Maximum": 5, "Value": cfg.get("min", 0)}),
-                                      ui.Label({"Text": "a", "Weight": 0}),
-                                      ui.SpinBox({"ID": "Max", "Minimum": 1, "Maximum": 5, "Value": cfg.get("max", 3)}),
-                                      ui.HGap(0, 1)]),
-            ui.HGroup({"Weight": 0}, [ui.Label({"Text": "Fuente:", "Weight": 0}), ui.ComboBox({"ID": "Source"})]),
-            ui.HGroup({"Weight": 0}, [ui.Label({"ID": "ExportInfo", "WordWrap": True}),
-                                      ui.Button({"ID": "Browse", "Text": "Elegir fichero…", "Weight": 0})]),
-            ui.HGroup({"Weight": 0}, [ui.CheckBox({"ID": "Respect", "Text": "Respetar marcadores existentes",
-                                                   "Checked": cfg.get("respect", True)}),
-                                      ui.Label({"Text": "color", "Weight": 0}), ui.ComboBox({"ID": "Color"})]),
+            row("Preset", ui.ComboBox({"ID": "Preset", "MinimumSize": [240, 0]}), ui.HGap(0, 1)),
+            row("Stills por plano", ui.Label({"Text": "de", "Weight": 0}),
+                ui.SpinBox({"ID": "Min", "Minimum": 0, "Maximum": 5, "Value": cfg.get("min", 0), "MinimumSize": [60, 0]}),
+                ui.Label({"Text": "a", "Weight": 0}),
+                ui.SpinBox({"ID": "Max", "Minimum": 1, "Maximum": 5, "Value": cfg.get("max", 3), "MinimumSize": [60, 0]}),
+                ui.HGap(0, 1)),
+            row("Fuente", ui.ComboBox({"ID": "Source", "MinimumSize": [300, 0]}), ui.HGap(0, 1)),
+            row("", ui.Label({"ID": "ExportInfo", "WordWrap": True, "Weight": 1, "MinimumSize": [0, 36]}),
+                ui.Button({"ID": "Browse", "Text": "Elegir fichero…", "Weight": 0})),
+            row("Marcadores", ui.CheckBox({"ID": "Respect", "Text": "Respetar los existentes de color", "Weight": 0,
+                                           "Checked": cfg.get("respect", True)}),
+                ui.ComboBox({"ID": "Color", "MinimumSize": [120, 0]}), ui.HGap(0, 1)),
+            ui.VGap(6),
             section("3 · Qué hacer con los elegidos"),
-            ui.CheckBox({"ID": "OutMarkers", "Checked": cfg.get("out_markers", True), "Weight": 0}),
-            ui.HGroup({"Weight": 0}, [ui.CheckBox({"ID": "OutGallery", "Text": "Añadir a la Gallery · álbum",
-                                                   "Checked": cfg.get("out_gallery", False), "Weight": 0}),
-                                      ui.LineEdit({"ID": "Album"})]),
-            ui.Label({"ID": "Status", "WordWrap": True, "Weight": 0}),
-            ui.TextEdit({"ID": "Summary", "ReadOnly": True, "Weight": 1}),
+            row("", ui.CheckBox({"ID": "OutMarkers", "Checked": cfg.get("out_markers", True), "Weight": 1})),
+            row("", ui.CheckBox({"ID": "OutGallery", "Text": "Añadir a la Gallery, en el álbum:", "Weight": 0,
+                                 "Checked": cfg.get("out_gallery", False)}),
+                ui.LineEdit({"ID": "Album", "Weight": 1})),
+            ui.VGap(6),
+            ui.Label({"ID": "Status", "WordWrap": True, "Weight": 0, "MinimumSize": [0, 36]}),
+            ui.TextEdit({"ID": "Summary", "ReadOnly": True, "Weight": 1, "MinimumSize": [0, 120]}),
             ui.HGroup({"Weight": 0}, [ui.HGap(0, 1), ui.Button({"ID": "Cancel", "Text": "Cancelar", "Weight": 0}),
-                                      ui.Button({"ID": "Run", "Text": "Analizar", "Weight": 0, "Default": True})]),
+                                      ui.Button({"ID": "Run", "Text": "Analizar", "Weight": 0, "Default": True,
+                                                 "MinimumSize": [110, 0]})]),
         ]))
     itm = win.GetItems()
     for _, label in PRESETS:
@@ -337,11 +353,13 @@ def gui(resolve, bmd):
             say("✗ Falta el entorno del análisis. Vuelve a lanzar install.command.")
             return finish()
         jp, rp, pp = (os.path.join(st["tmp"], n) for n in ("job.json", "result.json", "progress.txt"))
-        with open(jp, "w") as fh:
+        with open(jp, "w", encoding="utf-8") as fh:
             json.dump(job, fh)
         env = {k: v for k, v in os.environ.items() if not k.startswith("PYTHON")}  # que no herede el Python de Resolve
+        env["PYTHONUTF8"] = "1"  # rutas con acentos aunque Resolve lance el proceso sin locale (bitácora 03)
         st["proc"] = subprocess.Popen([python, "-m", "autostills.worker", jp, rp], cwd=os.path.join(HOME_DIR, "app"),
-                                      stdout=open(pp, "w"), stderr=open(pp + ".err", "w"), env=env)
+                                      stdout=open(pp, "w", encoding="utf-8"),
+                                      stderr=open(pp + ".err", "w", encoding="utf-8"), env=env)
         st.update(phase="worker", after=then, files=(rp, pp))
 
     def export_frames(frames, then, label):
@@ -480,7 +498,7 @@ def gui(resolve, bmd):
             elif st["phase"] == "worker":
                 rp, pp = st["files"]
                 try:
-                    with open(pp) as fh:
+                    with open(pp, encoding="utf-8") as fh:
                         last = [x for x in fh.read().splitlines() if x.strip()][-1:]
                     if last:
                         p = json.loads(last[0])
@@ -491,10 +509,10 @@ def gui(resolve, bmd):
                 if code is not None:
                     st["proc"] = None
                     if code != 0 or not os.path.exists(rp):
-                        with open(pp + ".err") as fh:
+                        with open(pp + ".err", encoding="utf-8") as fh:
                             say("✗ El análisis falló:\n" + fh.read()[-1500:])
                         return finish()
-                    with open(rp) as fh:
+                    with open(rp, encoding="utf-8") as fh:
                         res = json.load(fh)
                     st["phase"] = "next"
                     st["after"](res)

@@ -21,10 +21,13 @@ PRESETS = {
 # del plano, y un 0,01 % de píxeles quemados no cuesta el peso entero.
 ABSOLUTE = {"exposure", "face_present", "face_quality", "eyes_open", "mouth_closed", "frontal", "face_complete",
             "composition", "aesthetic", "no_text"}
-EDGE = 0.10        # criterio 5: fuera el primer y el último 10 % del plano
+EDGE = 0.10        # criterio 5: fuera el primer y el último 10 % del plano…
+EDGE_MAX = 25      # …pero nunca más de ~1 s: en un plano largo, el 10 % se comía un encuadre entero (bitácora 03)
 CANDIDATES = 8     # candidatos por plano que pasan a la segunda pasada
 # D19. shortcut: umbrales a ojo hasta la prueba con el owner
-FRAMING_DIFF = 0.10    # diferencia media de la miniatura 16x9 a partir de la cual es «otro encuadre»
+FRAMING_SCALE = 1.25   # la cámara se ha acercado o alejado un 25 % → otro encuadre
+FRAMING_SHIFT = 0.25   # o se ha desplazado un cuarto del cuadro
+MIN_FRAMING = 25       # frames (~1 s): un encuadre más corto no cuenta como encuadre propio
 MIN_SHOT = 12          # frames: un plano más corto no da still (con mínimo 0)
 SHARP_GATE = 0.30      # el mejor frame por debajo del 30 % de la nitidez mediana del timeline no da still
 
@@ -54,7 +57,7 @@ def rank(values):
 def valid_mask(metrics):
     """Criterio 5: bordes del plano, frames negros y flashes/fundidos fuera. Si no queda nada, se usan todos."""
     n = len(metrics)
-    edge = int(n * EDGE)
+    edge = min(int(n * EDGE), EDGE_MAX)
     lumas = [m["luma"] for m in metrics]
     med = float(np.median(lumas))
 
@@ -165,19 +168,63 @@ def pick(frames, scores, thumbs, n, min_gap=None, min_diff=0.03):
     return chosen
 
 
-def framings(thumbs, ok):
-    """D19: tramos de encuadre a lo largo del plano. Uno nuevo empieza cuando la composición se aleja lo bastante
-    del primer frame del tramo (la cámara se ha movido). Un tramo demasiado corto se une al anterior."""
+def camera_poses(metrics):
+    """Posición acumulada de la cámara en cada frame (escala, x, y) respecto al primero del plano."""
+    S, X, Y, out = 1.0, 0.0, 0.0, []
+    for m in metrics:
+        s, dx, dy = m.get("cam") or (1.0, 0.0, 0.0)
+        S *= s
+        X, Y = X + dx / S, Y + dy / S
+        out.append((S, X, Y))
+    return out
+
+
+def framings(poses, ok):
+    """D19: tramos de encuadre a lo largo del plano, según lo que se mueve la cámara (no lo que pasa dentro del cuadro).
+    Un tramo nuevo empieza cuando la cámara se ha acercado/alejado o desplazado lo bastante respecto al primer frame
+    del tramo. Un tramo demasiado corto (un barrido) se une al anterior."""
     idx = [i for i, v in enumerate(ok) if v]
-    min_len = max(6, len(idx) // 8)
+    min_len = MIN_FRAMING
     segs = []
     for i in idx:
-        if segs and np.abs(thumbs[i] - thumbs[segs[-1][0]]).mean() <= FRAMING_DIFF:
-            segs[-1].append(i)
-        elif segs and len(segs[-1]) < min_len:
-            segs[-1].append(i)  # el tramo anterior aún es un barrido, no un encuadre: se alarga
-        else:
-            segs.append([i])
+        if segs:
+            if _same_pose(poses[segs[-1][0]], poses[i]) or len(segs[-1]) < min_len:
+                segs[-1].append(i)
+                continue
+        segs.append([i])
     if len(segs) > 1 and len(segs[-1]) < min_len:
-        segs[-2] += segs.pop()
-    return segs
+        last = segs.pop()  # no `segs[-2] += segs.pop()`: la lista encoge antes de asignar (bitácora 03)
+        segs[-1] += last
+    # un tramo intermedio en el que la cámara está casi todo el rato moviéndose es el movimiento, no un encuadre: se une
+    # al siguiente. El primero y el último se quedan: son el punto de partida y el de llegada del movimiento.
+    moving = _moving(poses)
+    still = []
+    for k, seg in enumerate(segs):
+        if 0 < k < len(segs) - 1 and sum(moving[i] for i in seg) > len(seg) / 2:
+            segs[k + 1] = seg + segs[k + 1]
+            continue
+        still.append(seg)
+    segs = still
+    # y se juntan los vecinos cuya posición típica es la misma
+    merged = [segs[0]] if segs else []
+    for seg in segs[1:]:
+        if _same_pose(np.median([poses[i] for i in merged[-1]], 0), np.median([poses[i] for i in seg], 0)):
+            merged[-1] += seg
+        else:
+            merged.append(seg)
+    return merged
+
+
+def _moving(poses, k=3):
+    """Frames en los que la cámara se mueve lo bastante como para cambiar de encuadre en menos de ~2 s."""
+    out = []
+    for i in range(len(poses)):
+        a, b = poses[max(0, i - k)], poses[min(len(poses) - 1, i + k)]
+        n = max(1, min(len(poses) - 1, i + k) - max(0, i - k))
+        out.append(abs(np.log(b[0] / a[0])) / n > np.log(FRAMING_SCALE) / 50
+                   or np.hypot(b[1] - a[1], b[2] - a[2]) / n > FRAMING_SHIFT / 50)
+    return out
+
+
+def _same_pose(a, b):
+    return abs(np.log(b[0] / a[0])) <= np.log(FRAMING_SCALE) and np.hypot(b[1] - a[1], b[2] - a[2]) <= FRAMING_SHIFT
