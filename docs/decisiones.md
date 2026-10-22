@@ -78,6 +78,10 @@ Una entrada por decisión: contexto, opciones, elección, fecha. Nunca se borra 
 - **Elección**: **aprobado por el owner** tal cual. Cualquier cambio posterior se enseña antes como boceto.
 - 2026-10-22.
 
+## D16 — Modelos de decisión JEV: a explorar en el futuro, sobre una preselección
+- **Contexto**: investigación del 2026-10-22 (`docs/investigacion.md` §6).
+- **Elección**: **fuera de v0.1; se explora después** como juez final que elige entre 3–5 candidatos preseleccionados por los criterios baratos, no sobre todos los frames. Al owner le «pinta muy interesante» sobre una preselección. La API en la nube de TypeSafe queda descartada por confidencialidad.
+- 2026-10-22.
+
 ## Pendientes
 - Pesos de cada preset (D6) y frames muestreados por plano: con una prueba contra stills elegidos por el owner.
-- Modelos de decisión JEV como juez final (`docs/investigacion.md` §6): ¿experimento después de v0.1?

@@ -31,7 +31,7 @@ Python: Resolve 21.1 trae **su propio Python 3.14** (`ResolvePython`, sin `pip`)
 
 Recomendación inicial: B como camino principal, A a medir y C descartado.
 
-**Medido el 2026-10-22 (bitácora 01, D13):** A no sirve, porque la miniatura es fija por clip y de 576×324. Hay un cuarto camino, que es el elegido: **D. `Project.ExportCurrentFrameAsStill`** frame a frame. Da el frame graduado a resolución de timeline, en ~0,5 s, sin render y sin tocar la Gallery.
+**Medido el 2026-10-22 (bitácora 01, D13):** A no sirve, porque la miniatura es fija por clip y de 576×324. Hay un cuarto camino, que es el elegido: **D. `Project.ExportCurrentFrameAsStill`** frame a frame. Da el frame graduado a resolución de timeline, en ~0,5 s, sin render y sin tocar la Gallery. Es exactamente el frame del cabezal (H3); el frame fuente es `GetLeftOffset()` + (frame − `GetStart()`); los ~0,5 s se van en mover el cabezal y son un suelo (H4).
 
 ## 3. Señales para puntuar un frame
 
@@ -66,7 +66,7 @@ Después: YuNet/MediaPipe para Windows/Linux, PySceneDetect para planos largos, 
 
 ## 6. Modelos de decisión JEV (investigado el 2026-10-22, a petición del owner)
 
-**TL;DR.** JEV no describe imágenes ni genera texto: dada una imagen y una pregunta con opciones cerradas, devuelve **probabilidades calibradas** («¿cuál de estos frames es mejor still?» → 0,53 / 0,33 / 0,14). Encaja como **juez final** sobre 3–5 candidatos por plano, no como filtro de todos los frames. Hay versiones abiertas con visión (Apache-2.0), pero su runtime principal es vLLM con GPU NVIDIA: **en Mac no está probado** y el modelo pesa ~18 GB. Recomendación: no entra en v0.1; experimento posterior frente a un VLM local con MLX.
+**TL;DR.** JEV no describe imágenes ni genera texto: dada una imagen y una pregunta con opciones cerradas, devuelve **probabilidades calibradas** («¿cuál de estos frames es mejor still?» → 0,53 / 0,33 / 0,14). Encaja como **juez final** sobre 3–5 candidatos por plano, no como filtro de todos los frames. Hay versiones abiertas con visión (Apache-2.0), pero su runtime principal es vLLM con GPU NVIDIA: **en Mac no está probado** y el modelo pesa ~18 GB. Decisión (D16): no entra en v0.1; se explora después, sobre una preselección, frente a un VLM local con MLX.
 
 | | Jev (TypeSafe AI) | JEV-9B / JEV-27B-VL (AutoTrust AI Lab) |
 |---|---|---|
