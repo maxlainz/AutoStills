@@ -73,6 +73,11 @@ Una entrada por decisión: contexto, opciones, elección, fecha. Nunca se borra 
 - **Elección**: **todos**: nitidez, movimiento, exposición, rack focus, bordes del plano; presencia de caras, ojos, boca, orientación, cara completa, calidad de cara; saliencia, estética (a prueba, D7); representativo del grade, rango tonal, piel visible; los marcadores mandan, diversidad con N stills, no duplicar clips repetidos, saltar títulos/generadores/texto. El owner no añade más por ahora.
 - 2026-10-22.
 
+## D15 — Boceto de la ventana aprobado
+- **Contexto**: el boceto en texto del 2026-10-22 (norma `entrevista.md`): timeline y número de planos; preset (Gallery de referencia · Miniatura/redes · Contact sheet); stills por plano; pistas; todo el timeline o clips seleccionados; «Marcadores mandan» con su color; ajustes avanzados plegados (pesos); nombre del álbum; barra de progreso con plano actual y tiempo restante; Cancelar / Sacar stills. Al terminar, un resumen: planos sin cara, sin ningún frame nítido y resueltos por marcador. Cada still se etiqueta «CLIP · TC».
+- **Elección**: **aprobado por el owner** tal cual. Cualquier cambio posterior se enseña antes como boceto.
+- 2026-10-22.
+
 ## Pendientes
 - Pesos de cada preset (D6) y frames muestreados por plano: con una prueba contra stills elegidos por el owner.
-- Aprobación del boceto de la ventana (en el chat del 2026-10-22).
+- Modelos de decisión JEV como juez final (`docs/investigacion.md` §6): ¿experimento después de v0.1?

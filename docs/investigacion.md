@@ -63,3 +63,29 @@ Descartados para empezar: pyiqa (BRISQUE/NIQE/MUSIQ; licencia PolyForm Noncommer
 2. Worker en un entorno de `uv` creado por el instalador: `numpy` + `opencv-python-headless` + `pyobjc-framework-Vision` (licencias permisivas, ~60 MB, sin descargar modelos). Puntúa nitidez, movimiento, exposición y, en macOS 15+, cara, ojos y estética; suma ponderada y ranking por plano.
 
 Después: YuNet/MediaPipe para Windows/Linux, PySceneDetect para planos largos, LAION como descarga opcional, varios stills por plano con diversidad, presets de pesos (Gallery de referencia vs miniatura para redes).
+
+## 6. Modelos de decisión JEV (investigado el 2026-10-22, a petición del owner)
+
+**TL;DR.** JEV no describe imágenes ni genera texto: dada una imagen y una pregunta con opciones cerradas, devuelve **probabilidades calibradas** («¿cuál de estos frames es mejor still?» → 0,53 / 0,33 / 0,14). Encaja como **juez final** sobre 3–5 candidatos por plano, no como filtro de todos los frames. Hay versiones abiertas con visión (Apache-2.0), pero su runtime principal es vLLM con GPU NVIDIA: **en Mac no está probado** y el modelo pesa ~18 GB. Recomendación: no entra en v0.1; experimento posterior frente a un VLM local con MLX.
+
+| | Jev (TypeSafe AI) | JEV-9B / JEV-27B-VL (AutoTrust AI Lab) |
+|---|---|---|
+| Qué es | Modelo de decisión cerrado, lanzado en septiembre de 2026 | Destilados abiertos de Jev sobre Qwen3.5-9B / Qwen 27B; no afiliados a TypeSafe |
+| Visión | No mencionada | Sí, *zero-shot*: imágenes en base64 dentro del `state` (JEV-9B desde el 2026-10-03; JEV-27B-VL) |
+| Preguntas | Clasificación, puntuación | `noul` (sí/no), `choice` (2–16 opciones), `score` (0–5 con distribución y valor esperado) |
+| Local | No: solo API (en la nube) | Pesos descargables (~18 GB en BF16 para 9B); GGUF de terceros (Q3 de 4,6 GB, «baja calidad») |
+| Runtime | API | vLLM (recomendado, GPU), `transformers` + `peft`. **MLX, llama.cpp y Apple Silicon no aparecen en la ficha** |
+| Velocidad | 238–301 ms por decisión (API) | ~90 ms por decisión en una B200; ~0,2 s por decisión con imagen |
+| Licencia | Comercial | Apache-2.0 (los modelos base mantienen la suya) |
+
+**Cómo encajaría.** Los criterios baratos de `docs/criterios.md` sacan 3–5 candidatos por plano y JEV elige entre ellos (`choice`) o puntúa cada uno (`score`). Sería otra señal, con peso propio en los presets.
+
+**Pegas**
+- La API de TypeSafe sube los frames a la nube. Con material de cliente, eso es un problema de confidencialidad: se descarta.
+- La ficha de JEV-9B advierte de un sesgo de orden: con 16 opciones, cambiar solo el orden cambia el 11,5 % de las respuestas. Habría que barajar las opciones y promediar.
+- No hay evidencia de que la vía de visión funcione en Mac fuera de vLLM.
+- Es otra descarga grande, que choca con D11 (instalación fácil). Las cifras de las fichas son autodeclaradas.
+
+**Alternativa a comparar.** Un VLM general local con MLX (familia Qwen-VL o Gemma, en 4 bits) al que se le pregunta lo mismo. Está más maduro en Mac, pero no da probabilidades calibradas.
+
+Fuentes: [ficha de JEV-9B](https://huggingface.co/autotrust/JEV-9B), [organización autotrust](https://huggingface.co/autotrust), [GGUF de terceros](https://huggingface.co/prithivMLmods/JEV-9B-GGUF), [TechCrunch sobre Jev](https://techcrunch.com/2026/09/18/a-new-kind-of-ai-model-from-a-chatgpt-inventor-is-thrilling-developers/), [JevLite (solo texto, Core ML)](https://huggingface.co/j-llm/jevlite), [JEVQA, Jev como predictor de calidad de vídeo](https://arxiv.org/pdf/2609.24395).
