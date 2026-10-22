@@ -12,7 +12,7 @@ import subprocess
 import time
 from datetime import datetime
 
-__version__ = "0.0.0"
+__version__ = "0.1.0"
 HOME_DIR = os.path.expanduser("~/Library/Application Support/AutoStills")  # lo crea install.command
 CACHE_DIR = os.path.expanduser("~/Library/Caches/AutoStills")              # frames temporales; se borran al acabar
 PRESETS = [("gallery", "Gallery de referencia"), ("social", "Miniatura / redes"), ("contact", "Contact sheet")]
