@@ -8,7 +8,7 @@ description: Cut a version of AutoStills - make ci, version bump, changelog, bit
 A release is: `version` bumped, changelog, bitácora entry, `CLAUDE.md` updated, vault notes written (rule `obsidian.md`), annotated tag. First version is `v0.1.0`, then plain SemVer (rule `git.md`). In this order:
 
 1. `make ci` green and everything merged into `main` by PR. `gh issue list` read; issues closed by this release referenced in the commit body.
-2. Bump `version` in `pyproject.toml` (single source of truth) and `__version__` in the script once it exists. Then `uv sync` so `uv.lock` follows.
+2. Bump `version` in `pyproject.toml` (single source of truth) and `__version__` in `AutoStills.py` and `autostills/__init__.py` (`tests/test_score.py` checks all three). Then `uv sync` so `uv.lock` follows.
 3. `CHANGELOG.md`: move `[Unreleased]` into `## [X.Y.Z] - YYYY-MM-DD`; keep an empty `[Unreleased]`.
 4. Vault: every new concept of the release has a note (skill `obsidian-vault`). If the vault does not answer, stop and tell the owner.
 5. `docs/bitacora/NN-*.md` entry with TL;DR; `CLAUDE.md` state + next step.

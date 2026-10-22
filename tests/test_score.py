@@ -20,7 +20,9 @@ def blurred(sigma):
 
 
 def test_version_matches_pyproject():
-    assert autostills.__version__ == tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
+    import AutoStills
+    v = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
+    assert autostills.__version__ == AutoStills.__version__ == v
 
 
 def test_sharpness_and_motion():
@@ -133,3 +135,24 @@ def test_bad_face_scores_below_good_face():
 
 def test_sharpness_box_outside_frame():
     assert metrics.sharpness(cv2.cvtColor(PATTERN, cv2.COLOR_BGR2GRAY), (1.2, 0.2, 0.1, 0.1)) is None
+
+
+def test_check_and_mixed_sources(tmp_path):
+    # export de 20 frames; el frame 105 de Resolve ya no cuadra (grade cambiado después del render)
+    imgs = [blurred(0.3 * abs(i - 8)) for i in range(20)]
+    _write_video(tmp_path / "e.avi", imgs)
+    now = {}
+    for f, im in ((102, imgs[2]), (105, (imgs[5] * 0.4 + 90).astype(np.uint8))):
+        cv2.imwrite(str(tmp_path / f"{f}.png"), im)
+        now[str(f)] = str(tmp_path / f"{f}.png")
+    d = worker.run({"source": "check", "video": str(tmp_path / "e.avi"), "video_first_frame": 100, "frames": now})["diff"]
+    assert d["102"] < 0.02 and d["105"] > 0.05
+    # mezcla: el plano A sale del export, el B de sus frames muestreados
+    sampled = {str(f): str(tmp_path / f"{f}.png") for f in (115, 116)}
+    cv2.imwrite(sampled["115"], blurred(3))
+    cv2.imwrite(sampled["116"], blurred(0))
+    job = {"source": "video", "video": str(tmp_path / "e.avi"), "video_first_frame": 100,
+           "shots": [{"id": "A", "start": 100, "end": 110}, {"id": "B", "start": 110, "end": 120, "frames": sampled}]}
+    res = {s["id"]: s for s in worker.run(job)["shots"]}
+    assert res["A"]["analysed"] == 10 and [p["frame"] for p in res["A"]["picks"]] == [108]
+    assert res["B"]["analysed"] == 2 and [p["frame"] for p in res["B"]["picks"]] == [116]

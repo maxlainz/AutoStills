@@ -4,6 +4,8 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado
 
 ## [Unreleased]
 ### Añadido
+- Ventana de Resolve `AutoStills.py` (D15, D17): preset, stills por plano, pistas, todo o selección, fuente (último export o muestreo), marcadores, álbum; comprueba el export plano a plano, mezcla export y muestreo, hace Grab Still con etiqueta «CLIP · TC» y deja cabezal y página como estaban.
+- `install.command` de un doble clic (D11).
 - Worker de puntuación `autostills/` (bitácora 02): métricas baratas, Apple Vision (caras, ojos, boca, orientación, saliencia, texto, estética opcional), presets con pesos provisionales, elección de N stills con diversidad; lee el export una sola vez o frames muestreados; tolera frames ilegibles y errores por plano. 24 tests sobre frames sintéticos.
 - Arranque del repo con el método de la familia: normas, hooks, skills, `make ci`, CI, `leak-check` (bitácora 00).
 - Investigación de opciones: API de Resolve 21.1, caminos para obtener frames, señales de puntuación, precedentes (`docs/investigacion.md`).

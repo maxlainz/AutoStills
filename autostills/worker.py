@@ -6,11 +6,15 @@ Escribe el progreso en stdout, una línea JSON por plano, para la barra de la ve
 job.json:
   {"source": "video", "video": "<ruta del export>", "video_first_frame": <frame de timeline del frame 0 del vídeo>,
    | "source": "frames", "frames": {"<frame de timeline>": "<ruta de imagen>", ...},   # muestreo desde Resolve (D13)
-   "shots": [{"id": "...", "start": <frame>, "end": <frame, exclusivo>}, ...],
+   "shots": [{"id": "...", "start": <frame>, "end": <frame, exclusivo>, "frames": {...} opcional}, ...],
+   # un plano con su propio "frames" se analiza con esos frames aunque la fuente sea el vídeo (mezcla, D17)
    "preset": "gallery" | "social" | "contact", "n": 1, "aesthetics": false}
 result.json:
   {"version": "...", "shots": [{"id", "analysed": <frames>, "flags": [...],
                                 "picks": [{"frame": <frame de timeline>, "score": 0..1, "detail": {rasgo: valor}}]}]}
+
+Comprobación previa (D17): {"source": "check", "video": ..., "video_first_frame": ..., "frames": {"<frame>": "<ruta>"}}
+  → {"version": "...", "diff": {"<frame>": 0..1 | null}}: diferencia entre el export y lo que Resolve muestra ahora.
 """
 import json
 import sys
@@ -98,18 +102,44 @@ def _video_shots(job, shots):
     cap.release()
 
 
-def _frame_shots(job, shots):
-    paths = {int(k): v for k, v in job["frames"].items()}
+def _frame_shots(frames, shots):
     for s in shots:
+        paths = {int(k): v for k, v in (s.get("frames") or frames or {}).items()}
         fr = sorted(f for f in paths if s["start"] <= f < s["end"])
-        yield s, fr, (lambda x: cv2.imread(paths[x], cv2.IMREAD_COLOR))  # None si falta: analyse_shot lo salta
+        yield s, fr, (lambda x, p=paths: cv2.imread(p[x], cv2.IMREAD_COLOR))  # None si falta: analyse_shot lo salta
+
+
+def check(job):
+    """D17: diferencia entre cada frame del export y el mismo frame exportado ahora desde Resolve."""
+    want = {int(k): v for k, v in job["frames"].items()}
+    out = {f: None for f in want}
+    cap = cv2.VideoCapture(job["video"])
+    first, i = job["video_first_frame"], 0
+    while cap.isOpened() and first + i <= max(want, default=first - 1):
+        ok, img = cap.read()
+        f = first + i
+        i += 1
+        if not ok:
+            break
+        if f in want:
+            ref = cv2.imread(want[f], cv2.IMREAD_COLOR)
+            out[f] = None if ref is None else round(metrics.difference(img, ref), 4)
+    cap.release()
+    return {str(f): d for f, d in out.items()}
 
 
 def run(job):
+    if job["source"] == "check":
+        return {"version": __version__, "diff": check(job)}
     shots = job["shots"]
-    gen = _video_shots(job, shots) if job["source"] == "video" else _frame_shots(job, shots)
+    own, rest = [s for s in shots if "frames" in s], [s for s in shots if "frames" not in s]
+    gens = []
+    if rest:
+        gens.append(_video_shots(job, rest) if job["source"] == "video" else _frame_shots(job.get("frames"), rest))
+    if own:
+        gens.append(_frame_shots(None, own))
     out = []
-    for k, (s, fr, images) in enumerate(gen, 1):
+    for k, (s, fr, images) in enumerate((x for g in gens for x in g), 1):
         try:
             res = analyse_shot(fr, images, job.get("preset", "gallery"), job.get("n", 1), job.get("aesthetics", False))
         except Exception as e:  # un plano raro no se lleva por delante el resto del timeline
