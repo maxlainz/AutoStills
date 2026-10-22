@@ -51,5 +51,13 @@ Se reprodujo el análisis fuera de Resolve: el render del timeline y los 49 plan
 - «Guardar como predeterminado» se solapaba y aparecía en otra fila: ahora el «⋯» se convierte en ese botón en el mismo sitio.
 - El nombre del render se salía de la ventana: un nombre de fichero no salta de línea, así que se acorta por el medio (`elide`) y el completo va en el tooltip.
 
+## H13 — Grab Still con otro clip encima
+- El owner: «al hacer el still, si hay otro elemento en una capa superior, no basta con el TC; hay que estar en el mismo clip y el mismo frame».
+- `GrabStill` saca el still del clip «current» de la Color page, y la API no tiene forma de elegirlo (no existe `SetCurrentVideoItem`). En el timeline de prueba, con un título («Text») en V2 sobre el primer plano, Resolve mantiene V1 como current en Edit y en Color. El fallo debe de venir de un clip con media en una pista superior (sin reproducir aquí).
+- Arreglo (`grab_from`):
+  1. Antes de cada still se comprueba que `GetCurrentVideoItem()` es el clip del plano.
+  2. Si no lo es, se desactivan un momento (`SetClipEnabled(False)`) los clips de las pistas de encima que lo tapan en ese frame, se saca el still y se reactivan en un `finally`.
+  3. Si ni así queda current, no se saca el still y el resumen lo dice.
+
 ## Siguiente paso
 - Que el owner relance la prueba: el export ya aparece. Siguen pendientes los supuestos de la bitácora 02: la posición de los marcadores, Grab Still en la Color page y el umbral de la comprobación.
