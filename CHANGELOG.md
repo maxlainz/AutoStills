@@ -4,6 +4,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado
 
 ## [Unreleased]
 ### Corregido
+- Faltaban stills, sobre todo el primero: `GrabStill` falla a veces justo después de cambiar a la Color page. Ahora hay una pausa y hasta 4 intentos, y el resumen dice el motivo real de cada still que no sale (H14).
 - Grab Still con un clip encima sacaba el still del clip de arriba. Ahora se comprueba el clip current y, si hace falta, se desactivan un momento los clips que lo tapan (H13).
 - El plano largo del final se quedaba sin still por un `IndexError` en `select.framings` (H9).
 - Un plano que compartía unos frames del mismo clip se daba por repetido; ahora hace falta solapar más de la mitad (H10).

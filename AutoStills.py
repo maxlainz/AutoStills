@@ -459,21 +459,33 @@ def gui(resolve, bmd):
             album = gallery.CreateGalleryStillAlbum()
             gallery.SetAlbumName(album, itm["Album"].Text)
             gallery.SetCurrentStillAlbum(album)
-            resolve.OpenPage("color")  # shortcut: se asume que GrabStill necesita la Color page (sin verificar)
+            resolve.OpenPage("color")  # GrabStill trabaja sobre la Color page (comprobado, H14)
+            time.sleep(1.0)  # el primer GrabStill justo después de cambiar de página suele fallar (H14)
             st["queue"] = grabs
             st.update(phase="grab", album=album, total=len(grabs), grabbed=0)
         else:
             st["grabbed"] = 0
             finish()
 
+    def grab_still():
+        """GrabStill falla a veces, sobre todo el primero tras abrir la Color page (H14): hasta 4 intentos."""
+        for _ in range(4):
+            still = tl.GrabStill()
+            if still:
+                return still
+            time.sleep(0.4)
+        return None
+
     def grab_from(s, f):
         """Grab Still del clip del plano, no del que tenga encima: el still es del clip que está «current» en la Color
         page y la API no deja elegirlo. Si el current es otro, se desactivan un momento los clips de las pistas de
-        encima que lo tapan en ese frame y se vuelven a activar pase lo que pase (bitácora 03)."""
+        encima que lo tapan en ese frame y se vuelven a activar pase lo que pase (H13).
+        Devuelve (still, motivo si no hay still)."""
         tl.SetCurrentTimecode(tc(f, fps))
         cur = tl.GetCurrentVideoItem()
         if cur and cur.GetUniqueId() == s["uid"]:
-            return tl.GrabStill()
+            still = grab_still()
+            return still, None if still else "Resolve no devolvió el still"
         track = int(s["id"].split(":")[0])
         off = []
         try:
@@ -483,7 +495,10 @@ def gui(resolve, bmd):
                         off.append(it)
             tl.SetCurrentTimecode(tc(f, fps))
             cur = tl.GetCurrentVideoItem()
-            return tl.GrabStill() if cur and cur.GetUniqueId() == s["uid"] else None
+            if not (cur and cur.GetUniqueId() == s["uid"]):
+                return None, "otro clip encima que no se pudo apartar"
+            still = grab_still()
+            return still, None if still else "Resolve no devolvió el still"
         finally:
             for it in off:
                 it.SetClipEnabled(True)
@@ -502,9 +517,8 @@ def gui(resolve, bmd):
             if itm["OutGallery"].Checked:
                 out.append(f"{st['grabbed']} stills en «{itm['Album'].Text}»")
             say("✓ " + " · ".join(out))
-            missed = st.pop("missed", [])
-            if missed:
-                say(f"  {len(missed)} stills sin sacar (no se pudo poner su clip como actual): " + ", ".join(missed))
+            for why, labels in st.pop("missed", {}).items():
+                say(f"  {len(labels)} stills sin sacar ({why}): " + ", ".join(labels))
             via, flags = st["via"], {r["id"]: r["flags"] for r in res.get("shots", [])}
             names = {s["id"]: s["name"] for s in st["shots"]}
             for v, text in (("export", "analizados con el export"), ("muestreo", "analizados por muestreo"),
@@ -555,12 +569,12 @@ def gui(resolve, bmd):
             elif st["phase"] == "grab":
                 if st["queue"]:
                     s, f = st["queue"].pop(0)
-                    still = grab_from(s, f)
+                    still, why = grab_from(s, f)
                     if still:
                         st["album"].SetLabel(still, still_label(s["name"], f, fps))
                         st["grabbed"] += 1
                     else:
-                        st.setdefault("missed", []).append(still_label(s["name"], f, fps))
+                        st.setdefault("missed", {}).setdefault(why, []).append(still_label(s["name"], f, fps))
                     step("Marcar y añadir", f"Gallery {st['total'] - len(st['queue'])}/{st['total']}")
                 else:
                     finish()
