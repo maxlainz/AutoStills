@@ -1,6 +1,6 @@
 [project]
 name = "autostills"
-version = "0.0.0"
+version = "0.1.0"
 description = "DaVinci Resolve script that picks the best still of each shot (faces, sharpness, exposure) instead of the first or middle frame"
 readme = "README.md"
 license = "MIT"

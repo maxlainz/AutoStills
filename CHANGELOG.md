@@ -3,6 +3,10 @@
 Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado: [SemVer](https://semver.org/lang/es/). Categorías: Añadido · Cambiado · Corregido · Decidido · Medido · Eliminado.
 
 ## [Unreleased]
+
+## [0.1.0] - 2026-10-22
+Primera versión, aprobada por el owner tras probarla en Resolve Studio 21.1: elige de 0 a X stills por plano analizando el último export del timeline (o por muestreo), los marca en el timeline y/o los añade a la Gallery.
+
 ### Corregido
 - Faltaban stills, sobre todo el primero: `GrabStill` falla a veces justo después de cambiar a la Color page. Ahora hay una pausa y hasta 4 intentos, y el resumen dice el motivo real de cada still que no sale (H14).
 - Grab Still con un clip encima sacaba el still del clip de arriba. Ahora se comprueba el clip current y, si hace falta, se desactivan un momento los clips que lo tapan (H13).
