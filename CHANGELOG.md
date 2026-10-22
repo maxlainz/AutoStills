@@ -4,6 +4,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado
 
 ## [Unreleased]
 ### Añadido
+- Worker de puntuación `autostills/` (bitácora 02): métricas baratas, Apple Vision (caras, ojos, boca, orientación, saliencia, texto, estética opcional), presets con pesos provisionales, elección de N stills con diversidad; lee el export una sola vez o frames muestreados; tolera frames ilegibles y errores por plano. 24 tests sobre frames sintéticos.
 - Arranque del repo con el método de la familia: normas, hooks, skills, `make ci`, CI, `leak-check` (bitácora 00).
 - Investigación de opciones: API de Resolve 21.1, caminos para obtener frames, señales de puntuación, precedentes (`docs/investigacion.md`).
 
@@ -17,6 +18,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado
 - Modelos de decisión JEV (TypeSafe y AutoTrust) como posible juez final: `docs/investigacion.md` §6.
 
 ### Medido
+- H5: OpenCV decodifica ProRes 4444 2K a 3,5 ms/frame; Vision 28 ms/frame a 1600×1080; 88 frames reales en 4,5 s (bitácora 02).
 - H1: la miniatura de la Color page es fija por clip y de 576×324. H2: `ExportCurrentFrameAsStill` da el frame graduado a resolución de timeline en ~0,5 s, sin frames atrasados (bitácora 01).
 - H3: el frame exportado es exactamente el del cabezal; frame fuente = `GetLeftOffset()` + (frame − `GetStart()`). H4: ~0,5 s por frame, que se van en mover el cabezal; intercalar planos no ayuda (bitácora 01).
 

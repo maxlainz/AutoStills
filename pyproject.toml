@@ -7,7 +7,11 @@ license = "MIT"
 authors = [{ name = "Max Lainz" }]
 requires-python = ">=3.11"
 # Dependencias de análisis: pendientes de decidir el stack (ver docs/investigacion.md).
-dependencies = []
+dependencies = [
+    "numpy>=2.4.6",
+    "opencv-python-headless>=5.0.0.93",
+    "pyobjc-framework-vision>=12.2.2 ; sys_platform == 'darwin'",
+]
 
 [dependency-groups]
 dev = [
@@ -27,4 +31,5 @@ select = ["E9", "F"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 addopts = "-q"
