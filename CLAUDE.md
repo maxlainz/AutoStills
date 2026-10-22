@@ -9,7 +9,7 @@ Script para **DaVinci Resolve Studio** que elige y captura automáticamente el m
 CLAUDE.md              este router
 .claude/rules/         normas (una por archivo)        .claude/skills/   release · obsidian-vault
 .claude/settings.json  hooks: pull + issues al arrancar · bloqueo de rutas al escribir · bloqueo de commit en main · push al cerrar
-docs/decisiones.md     ADRs D1–D12                      docs/bitacora/    una entrada por sesión (00 arranque)
+docs/decisiones.md     ADRs D1–D13                      docs/bitacora/    una entrada por sesión (00 arranque · 01 medida)
 docs/investigacion.md  API de Resolve, caminos para obtener frames, señales, precedentes, stack candidato
 docs/roadmap.md        versiones previstas (provisional)
 tests/                 vacío hasta que haya código     samples/          material local del owner (gitignored)
@@ -51,10 +51,9 @@ make ci      # leak-check + lint + test — el gate de cada commit
 ```
 
 ## Estado y siguiente paso
-- **Estado (2026-10-22, bitácora 00)**: repo creado con el método de la familia y publicado con `main` protegida (D3, D12); investigación hecha; entrevista de alcance hecha (D6–D11: varios usos con presets, cuatro criterios con la estética experimental, álbum de Gallery, solo Mac + Resolve Studio 21.1+, 1 still por plano ajustable, instalador de un paso con uv); sin código.
-- **Después**: medir cómo obtener los frames (miniaturas de la Color page vs proxy) cuando el owner lo permita → boceto de la ventana y presets → v0.1.0.
+- **Estado (2026-10-22, bitácora 01)**: repo creado con el método de la familia y publicado con `main` protegida (D3, D12); investigación hecha; entrevista de alcance hecha (D6–D11: varios usos con presets, cuatro criterios con la estética experimental, álbum de Gallery, solo Mac + Resolve Studio 21.1+, 1 still por plano ajustable, instalador de un paso con uv); medido cómo sacar los frames → `ExportCurrentFrameAsStill` (D13, bitácora 01); sin código.
+- **Después**: boceto de la ventana y presets para que el owner lo apruebe → comprobar que no hay desfase de frame → v0.1.0.
 
 ## Pendiente del owner (2026-10-22)
-- Permitir la medida de solo lectura en un proyecto (pospuesta: estaba renderizando).
 - Área del vault y nota de proyecto `AutoStills`.
 - Crear `scripts/leak-patterns.local.txt` con el nombre del estudio y de clientes.

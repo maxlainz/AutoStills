@@ -61,6 +61,11 @@ Una entrada por decisión: contexto, opciones, elección, fecha. Nunca se borra 
   - Secret scanning y push protection activados; alertas de vulnerabilidades activadas; Dependabot semanal para las actions y las dependencias de uv (`.github/dependabot.yml`).
 - 2026-10-22. El owner autorizó mergear los PR con CI verde.
 
+## D13 — Frames para analizar: `ExportCurrentFrameAsStill`, a resolución de timeline
+- **Contexto**: hacía falta elegir cómo obtener los frames (`docs/investigacion.md` §2). Medida de la bitácora 01: la miniatura de la Color page es fija por clip y de 576×324 (H1); `ExportCurrentFrameAsStill` da el frame graduado a resolución de timeline, sin frames atrasados, en ~0,5 s (H2).
+- **Opciones**: miniaturas de la Color page; render de un proxy; `ExportCurrentFrameAsStill` frame a frame.
+- **Elección**: **`ExportCurrentFrameAsStill`** desde la Edit page, a una carpeta temporal, a resolución de timeline. Descartadas las miniaturas: baja resolución, y no todo son primeros planos (owner). El proxy queda como plan B si un timeline largo lo hace necesario.
+- 2026-10-22. El owner confirmó que la resolución baja no basta y que el objetivo es quitarse el rato de elegir el still a mano.
+
 ## Pendientes
-- **Cómo obtener los frames** (miniaturas de la Color page vs proxy renderizado): se decide midiendo. El owner pospuso la medida en su proyecto abierto porque estaba renderizando (2026-10-22).
 - Presets concretos y sus pesos (D6), boceto de la ventana.
