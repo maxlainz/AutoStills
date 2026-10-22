@@ -53,6 +53,14 @@ Una entrada por decisión: contexto, opciones, elección, fecha. Nunca se borra 
 - **Elección**: `install.command` (doble clic) que copia el script a Resolve y crea con `uv` un entorno aislado con las librerías de análisis (numpy, OpenCV, pyobjc-framework-Vision). No toca el Python del sistema ni el de Resolve. La GUI dentro de Resolve sigue siendo solo stdlib y lanza el worker con ese entorno (norma `resolve.md`).
 - 2026-10-22, entrevista de alcance.
 
+## D12 — GitHub: `main` protegida, CI obligatoria y seguridad del repo público
+- **Contexto**: el repo es público (D3); el owner pidió protección de rama, CI «y demás».
+- **Elección** (igual que MHL MediaManagement, más Dependabot):
+  - `main` protegida: check `ci` obligatorio y al día con `main` (strict), historial lineal, conversaciones resueltas, sin force-push ni borrado, **también para admins**. Sin revisor obligatorio mientras escriba una sola persona.
+  - Merge solo por squash o rebase (sin merge commits), auto-merge permitido, ramas borradas al mergear; sin wiki ni projects.
+  - Secret scanning y push protection activados; alertas de vulnerabilidades activadas; Dependabot semanal para las actions y las dependencias de uv (`.github/dependabot.yml`).
+- 2026-10-22. El owner autorizó mergear los PR con CI verde.
+
 ## Pendientes
 - **Cómo obtener los frames** (miniaturas de la Color page vs proxy renderizado): se decide midiendo. El owner pospuso la medida en su proyecto abierto porque estaba renderizando (2026-10-22).
 - Presets concretos y sus pesos (D6), boceto de la ventana.

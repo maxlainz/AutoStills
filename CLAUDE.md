@@ -9,11 +9,11 @@ Script para **DaVinci Resolve Studio** que elige y captura automáticamente el m
 CLAUDE.md              este router
 .claude/rules/         normas (una por archivo)        .claude/skills/   release · obsidian-vault
 .claude/settings.json  hooks: pull + issues al arrancar · bloqueo de rutas al escribir · bloqueo de commit en main · push al cerrar
-docs/decisiones.md     ADRs D1–D11                      docs/bitacora/    una entrada por sesión (00 arranque)
+docs/decisiones.md     ADRs D1–D12                      docs/bitacora/    una entrada por sesión (00 arranque)
 docs/investigacion.md  API de Resolve, caminos para obtener frames, señales, precedentes, stack candidato
 docs/roadmap.md        versiones previstas (provisional)
 tests/                 vacío hasta que haya código     samples/          material local del owner (gitignored)
-.github/workflows/     ci.yml (push a main y PRs)      pyproject.toml · .python-version
+.github/               ci.yml (push a main y PRs) · dependabot.yml pyproject.toml · .python-version
 scripts/leak-check.sh  nada del estudio en el repo     scripts/leak-patterns.local.txt  patrones privados (gitignored)
 Makefile · CHANGELOG.md · README.md · LICENSE (MIT)
 ```
@@ -27,7 +27,7 @@ Makefile · CHANGELOG.md · README.md · LICENSE (MIT)
 | `decisiones-y-bitacora.md` | ADR por decisión, bitácora por sesión, `Hn` citados desde el código, `CLAUDE.md` y `CHANGELOG` al día |
 | `prediccion-antes-de-medir.md` | Predicción escrita antes de cada medida (s/plano, coste de leer un frame desde Resolve) |
 | `subagentes.md` | Orquestar y delegar; Opus para research/diseño/revisión, Sonnet para implementación, Haiku para inventarios |
-| `git.md` | Nunca en `main`: rama + PR + CI verde; Conventional Commits, SemVer, Keep a Changelog, sin trailers (D5) |
+| `git.md` | Nunca en `main`: rama + PR + CI verde, `main` protegida en GitHub (D12); Conventional Commits, SemVer, Keep a Changelog, sin trailers (D5) |
 | `pull-y-push.md` | Pull al abrir, push al cerrar |
 | `issues-abiertos.md` | Leer `gh issue list` antes de cualquier tarea |
 | `problemas-al-issue.md` | Lo que se encuentra y no se arregla, a issue |
@@ -51,7 +51,7 @@ make ci      # leak-check + lint + test — el gate de cada commit
 ```
 
 ## Estado y siguiente paso
-- **Estado (2026-10-22, bitácora 00)**: repo creado con el método de la familia y publicado (D3); investigación hecha; entrevista de alcance hecha (D6–D11: varios usos con presets, cuatro criterios con la estética experimental, álbum de Gallery, solo Mac + Resolve Studio 21.1+, 1 still por plano ajustable, instalador de un paso con uv); sin código.
+- **Estado (2026-10-22, bitácora 00)**: repo creado con el método de la familia y publicado con `main` protegida (D3, D12); investigación hecha; entrevista de alcance hecha (D6–D11: varios usos con presets, cuatro criterios con la estética experimental, álbum de Gallery, solo Mac + Resolve Studio 21.1+, 1 still por plano ajustable, instalador de un paso con uv); sin código.
 - **Después**: medir cómo obtener los frames (miniaturas de la Color page vs proxy) cuando el owner lo permita → boceto de la ventana y presets → v0.1.0.
 
 ## Pendiente del owner (2026-10-22)
