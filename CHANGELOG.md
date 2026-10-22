@@ -8,12 +8,12 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado
 - Un plano que compartía unos frames del mismo clip se daba por repetido; ahora hace falta solapar más de la mitad (H10).
 - Los encuadres se miden por el movimiento de la cámara (flujo óptico), no por la miniatura; un pull-back en una escena oscura ya da dos encuadres. El recorte de bordes del plano se limita a 25 frames (H11).
 - Ficheros de texto siempre en UTF-8, y el worker con `PYTHONUTF8=1` (H12).
-- Ventana: etiquetas en columna, textos que se ajustan, más espacio.
+- Ventana: etiquetas en columna, textos que se ajustan, más espacio. El botón «Analizar» ya no se solapa; el nombre del export se acorta por el medio (completo en el tooltip).
 - El último export no se encontraba: el fichero estaba en una subcarpeta que la API no da (H6), y `MarkIn` no es el rango renderizado (H7). Ahora se busca en subcarpetas y el inicio se lee del timecode del `.mov`; ya no hace falta que el render cubra todo el timeline (bitácora 03).
 
 ### Cambiado
 - Los marcadores van en el timeline, no en el clip, y al relanzar se leen del timeline (D23).
-- «Guardar ajustes como predeterminados» pasa a un botón «⋯» en la esquina.
+- «Guardar como predeterminado»: el «⋯» de la esquina se convierte en el botón en el mismo sitio (primer clic) y guarda (segundo clic).
 
 ### Añadido
 - Ventana v2 (D18): tres pasos, paso en curso, botón «Analizar». Marcadores en el timeline como salida por defecto y se respetan al relanzar (D20). De 0 a X stills por plano, uno por encuadre, con descarte de planos cortos o blandos (D19). Nombre «REC TC · CLIP» (D21). «Guardar como predeterminado» (D22).
