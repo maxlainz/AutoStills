@@ -43,8 +43,9 @@ def _subtract(seg, covers):
     return out
 
 
-def visible_shots(items, marker_color=None):
-    """`items`: clips con media de las pistas elegidas, dicts {track, start, end, name, path, src, uid, markers}.
+def visible_shots(items, marker_color=None, tl_markers=None):
+    """`items`: clips con media de las pistas elegidas, dicts {track, start, end, name, path, src, uid}.
+    `tl_markers`: marcadores del timeline {frame absoluto: color} (D23: van en el timeline, no en el clip).
     La pista de encima tapa a la de abajo (es lo que sale en el render); de cada clip se queda su tramo visible más
     largo. Criterio 19: un clip que repite media ya usada (mismo fichero, rango fuente solapado) no da otro still.
     Criterio 17 / D20: los marcadores del color elegido dentro del tramo son los stills del plano (no se analiza)."""
@@ -59,10 +60,9 @@ def visible_shots(items, marker_color=None):
         src = (it["src"] + a - it["start"], it["src"] + b - it["start"])
         dup = next((s["id"] for s in shots if s["path"] == it["path"] and s["src"][0] < src[1] and src[0] < s["src"][1]),
                    None)
-        marks = sorted(it["start"] + off for off, color in it["markers"].items()
-                       if marker_color and color == marker_color and a <= it["start"] + off < b)
+        marks = sorted(f for f, color in (tl_markers or {}).items() if marker_color and color == marker_color and a <= f < b)
         shots.append({"id": f"{it['track']}:{it['start']}", "name": it["name"], "path": it["path"], "uid": it.get("uid"),
-                      "item_start": it["start"], "start": a, "end": b, "src": src, "markers": marks, "dup_of": dup})
+                      "start": a, "end": b, "src": src, "markers": marks, "dup_of": dup})
     return shots
 
 
@@ -185,13 +185,18 @@ def read_items(tl, tracks, only_selected=False):
             # criterio 20: títulos, generadores y compuestos sin media no son planos
             if not path or not it.GetClipEnabled() or (sel is not None and it.GetUniqueId() not in sel):
                 continue
-            # shortcut: se asume que las claves de GetMarkers() son offsets desde el inicio del clip (sin verificar)
-            markers = {int(k): (v or {}).get("color") for k, v in (it.GetMarkers() or {}).items()}
             uid = it.GetUniqueId()
             objs[uid] = it
             out.append({"track": t, "start": it.GetStart(), "end": it.GetEnd(), "name": it.GetName(), "path": path,
-                        "src": it.GetLeftOffset(), "uid": uid, "markers": markers})
+                        "src": it.GetLeftOffset(), "uid": uid})
     return out, objs
+
+
+def read_tl_markers(tl):
+    """Marcadores del timeline → {frame absoluto: color}. shortcut: claves = offset desde el inicio del timeline
+    (convención de la API; comprobar a ojo en la primera prueba)."""
+    start = tl.GetStartFrame()
+    return {start + int(k): (v or {}).get("color") for k, v in (tl.GetMarkers() or {}).items()}
 
 
 def find_export(project, tl):
@@ -281,7 +286,7 @@ def gui(resolve, bmd):
         itm["Summary"].PlainText = "\n".join(st["log"])
 
     def refresh(ev=None):
-        shots = visible_shots(read_items(tl, tracks())[0], color())
+        shots = visible_shots(read_items(tl, tracks())[0], color(), read_tl_markers(tl))
         marked = sum(1 for s in shots if s["markers"])
         itm["Head"].Text = (f"Timeline: {tl.GetName()} · {len(shots)} planos en " + ", ".join(f"V{t}" for t in tracks())
                             + (f" · {marked} ya con marcadores {color()}" if marked else ""))
@@ -347,7 +352,7 @@ def gui(resolve, bmd):
         st["log"] = []
         respect = itm["Respect"].Checked
         items, st["objs"] = read_items(tl, tracks(), itm["Scope"].CurrentIndex == 1)
-        shots = visible_shots(items, color() if respect else None)
+        shots = visible_shots(items, color() if respect else None, read_tl_markers(tl))
         if not shots:
             return say("No hay planos con media en las pistas elegidas.")
         if not (itm["OutMarkers"].Checked or itm["OutGallery"].Checked):
@@ -414,9 +419,8 @@ def gui(resolve, bmd):
         marked = 0
         if itm["OutMarkers"].Checked:
             for s, f, note in new:
-                it = st["objs"].get(s["uid"])
-                # shortcut: offset desde el inicio del clip, como al leer (sin verificar en Resolve)
-                if it and it.AddMarker(f - s["item_start"], color(), still_label(s["name"], f, fps), note, 1, MARKER_TAG):
+                # D23: en el timeline, no en el clip; frameId = offset desde el inicio del timeline
+                if tl.AddMarker(f - tl.GetStartFrame(), color(), still_label(s["name"], f, fps), note, 1, MARKER_TAG):
                     marked += 1
         st["marked"] = marked
         grabs = sorted([(s, f) for s, f, _ in new] + [(s, f) for s in st["shots"] for f in s["markers"]],

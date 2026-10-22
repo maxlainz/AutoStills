@@ -111,7 +111,7 @@ Una entrada por decisión: contexto, opciones, elección, fecha. Nunca se borra 
   - Los umbrales son provisionales hasta la prueba con el owner.
 - 2026-10-22.
 
-## D20 — Marcadores en el timeline como salida, y se respetan al relanzar
+## D20 — Marcadores en el timeline como salida, y se respetan al relanzar (**matizada por D23**: van en el timeline, no en el clip)
 - **Contexto**: propuesta del owner. Si un pase deja marcadores, los siguientes no tienen que analizar, y el owner puede corregir a mano.
 - **Elección**:
   - **Salida por defecto: solo marcadores** en el clip, del color elegido, con la marca `AutoStills` en sus datos y la puntuación en la nota. Añadirlos a la Gallery es una casilla aparte. Flujo típico: un pase marca, el owner revisa y corrige, y un segundo pase con «Añadir a la Gallery» ya no analiza.
@@ -125,6 +125,12 @@ Una entrada por decisión: contexto, opciones, elección, fecha. Nunca se borra 
 
 ## D22 — «Guardar como predeterminado»
 - **Elección**: un botón discreto en la esquina de la ventana guarda los ajustes actuales (pistas, todo o seleccionados, preset, mínimo y máximo, fuente, respetar marcadores, color, salidas) en `~/Library/Application Support/AutoStills/settings.json`. La ventana los carga al abrirse.
+- 2026-10-22.
+
+## D23 — Los marcadores van en el timeline, no en el clip
+- **Contexto**: primera prueba del owner. La v2 los ponía en el clip (`TimelineItem.AddMarker`), y el owner los quiere en el timeline.
+- **Elección**: `Timeline.AddMarker`, con el mismo color, nombre «REC TC · CLIP», nota y `customData` `AutoStills`. Al relanzar se leen los marcadores del timeline (`Timeline.GetMarkers`) del color elegido dentro del tramo visible de cada plano. Los marcadores de clip ya no cuentan.
+- Limpieza: a petición del owner se borraron los 54 marcadores de clip que había dejado la v2 en el timeline de prueba (todos con `customData` `AutoStills`; no había otros).
 - 2026-10-22.
 
 ## Pendientes
