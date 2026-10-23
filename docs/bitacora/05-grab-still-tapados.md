@@ -12,6 +12,9 @@
 - Arreglo: `grab_from` ya no pregunta a `GetCurrentVideoItem()`. Siempre desactiva los clips de las pistas de encima en ese frame (también si son transparentes: el still los quema igual), saca el still y los reactiva. Solo se rinde si `SetClipEnabled(False)` falla.
 - Resultado con la lógica nueva sobre los 14 marcadores: 14 de 14 stills, ninguno con texto o logo encima, en 7,6 s.
 
+## Tests
+- `grab_still` y `grab_from` salen de `gui()` al nivel del módulo (reciben el timeline) para probarlos sin Resolve con un timeline falso en `tests/test_gui.py`: apaga solo los clips de encima que tapan el frame y los deja como estaban (también los que ya estaban apagados), no toca las pistas de debajo, reintenta `GrabStill`, se rinde si un clip no se deja apagar y lo restaura todo aunque Resolve lance una excepción. El timeline falso no tiene `GetCurrentVideoItem`, así que si alguien vuelve a usarlo los tests fallan (H15).
+
 ## Siguiente paso
 - Que el owner relance AutoStills con la Gallery activada en ese timeline.
 - Sigue la prueba de pesos con los marcadores del owner (bitácora 04).
