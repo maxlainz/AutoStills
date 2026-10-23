@@ -59,7 +59,7 @@ make ci      # leak-check + lint + test — el gate de cada commit
 
 ## Estado y siguiente paso
 - **Estado (2026-10-22, bitácora 04)**: **v0.1.0 publicada** y aprobada por el owner tras probarla en Resolve. Incluye la ventana v2 (D18–D24), el worker con dos pasadas y encuadres por movimiento de cámara (H11), el último export como fuente (D17, H6–H8) y Grab Still robusto (H13, H14). 39 tests.
-- **2026-10-23, bitácora 05**: arreglado el Grab Still de planos tapados (H15), pendiente de release.
+- **2026-10-23, bitácora 05**: arreglado el Grab Still de planos tapados (H15), pendiente de release. `grab_still`/`grab_from` salen de la ventana al nivel del módulo y se prueban con un timeline falso: 44 tests.
 - **Después**: prueba de pesos con los marcadores del owner (los umbrales y los pesos son a ojo); calibrar el umbral de la comprobación del export; explorar JEV sobre la preselección (D16).
 
 ## Pendiente del owner (2026-10-22)

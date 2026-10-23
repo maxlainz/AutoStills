@@ -103,3 +103,88 @@ def test_elide():
     out = A.elide(name)
     assert len(out) <= 44 and out.startswith("BarraDunBar_") and out.endswith("20261022.mov")
     assert A.elide("corto.mov") == "corto.mov"
+
+
+class FakeItem:
+    def __init__(self, start, end, enabled=True, can_disable=True):
+        self.start, self.end, self.enabled, self.can_disable = start, end, enabled, can_disable
+
+    def GetStart(self):
+        return self.start
+
+    def GetEnd(self):
+        return self.end
+
+    def GetClipEnabled(self):
+        return self.enabled
+
+    def SetClipEnabled(self, on):
+        if not on and not self.can_disable:
+            return False
+        self.enabled = on
+        return True
+
+
+class FakeTimeline:
+    """Sin GetCurrentVideoItem a propósito: en la Color page miente (H15) y grab_from no debe usarlo."""
+    def __init__(self, tracks, grabs=("still",)):
+        self.tracks, self.grabs, self.tc, self.seen = tracks, list(grabs), None, []
+
+    def GetTrackCount(self, kind):
+        return len(self.tracks)
+
+    def GetItemListInTrack(self, kind, t):
+        return self.tracks[t - 1]
+
+    def SetCurrentTimecode(self, tc):
+        self.tc = tc
+        return True
+
+    def GrabStill(self):
+        # lo que sale en el still: los clips de encima que siguen activos en el frame quedan quemados
+        self.seen.append([it for tr in self.tracks[1:] for it in tr if it.enabled])
+        g = self.grabs.pop(0)
+        if isinstance(g, Exception):
+            raise g
+        return g
+
+
+def test_grab_from_disables_covering_clips_and_restores_them():
+    logo, text, later, off_already = FakeItem(0, 412), FakeItem(43, 101), FakeItem(101, 131), FakeItem(50, 70, enabled=False)
+    tl = FakeTimeline([[FakeItem(43, 101)], [text, later, off_already], [logo]])
+    assert A.grab_from(tl, 1, 60, 25, sleep=lambda s: None) == ("still", None)
+    assert tl.tc == "00:00:02:10" and tl.seen == [[later]]  # en el still no está ni el texto ni el logo
+    assert logo.enabled and text.enabled and later.enabled and not off_already.enabled  # todo como estaba
+
+
+def test_grab_from_only_touches_tracks_above():
+    below = FakeItem(0, 100)
+    tl = FakeTimeline([[below], [FakeItem(0, 100)]])
+    A.grab_from(tl, 2, 10, 25, sleep=lambda s: None)
+    assert below.enabled and len(tl.seen) == 1  # V1 está debajo: no se apaga
+
+
+def test_grab_from_retries_and_reports_why():
+    tl = FakeTimeline([[FakeItem(0, 10)]], grabs=(None, None, "still"))
+    assert A.grab_from(tl, 1, 5, 25, sleep=lambda s: None) == ("still", None)
+    logo = FakeItem(0, 10)
+    tl = FakeTimeline([[FakeItem(0, 10)], [logo]], grabs=(None,) * 4)
+    assert A.grab_from(tl, 1, 5, 25, sleep=lambda s: None) == (None, "Resolve no devolvió el still")
+    assert logo.enabled
+
+
+def test_grab_from_gives_up_if_a_clip_cannot_be_disabled():
+    text, stuck = FakeItem(0, 10), FakeItem(0, 10, can_disable=False)
+    tl = FakeTimeline([[FakeItem(0, 10)], [text], [stuck]])
+    assert A.grab_from(tl, 1, 5, 25, sleep=lambda s: None) == (None, "otro clip encima que no se pudo apartar")
+    assert tl.seen == [] and text.enabled  # no se saca el still y lo apagado se vuelve a encender
+
+
+def test_grab_from_restores_clips_on_error():
+    logo = FakeItem(0, 10)
+    tl = FakeTimeline([[FakeItem(0, 10)], [logo]], grabs=(RuntimeError("Resolve"),))
+    try:
+        A.grab_from(tl, 1, 5, 25, sleep=lambda s: None)
+    except RuntimeError:
+        pass
+    assert logo.enabled

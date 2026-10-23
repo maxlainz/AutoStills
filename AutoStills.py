@@ -209,6 +209,38 @@ def read_tl_markers(tl):
     return {start + int(k): (v or {}).get("color") for k, v in (tl.GetMarkers() or {}).items()}
 
 
+def grab_still(tl, sleep=time.sleep):
+    """GrabStill falla a veces, sobre todo el primero tras abrir la Color page (H14): hasta 4 intentos."""
+    for _ in range(4):
+        still = tl.GrabStill()
+        if still:
+            return still
+        sleep(0.4)
+    return None
+
+
+def grab_from(tl, track, f, fps, sleep=time.sleep):
+    """Grab Still del clip de la pista `track` en el frame `f`, sin lo que tenga encima: el still lleva quemadas las
+    pistas superiores y la API no deja elegir el clip. Se desactivan un momento los clips de las pistas de encima en
+    ese frame y se vuelven a activar pase lo que pase (H13). En la Color page `GetCurrentVideoItem()` no se entera de
+    que se han desactivado, así que no se usa para comprobarlo (H15).
+    Devuelve (still, motivo si no hay still)."""
+    off = []
+    try:
+        for t in range(track + 1, int(tl.GetTrackCount("video") or 1) + 1):
+            for it in tl.GetItemListInTrack("video", t) or []:
+                if it.GetStart() <= f < it.GetEnd() and it.GetClipEnabled():
+                    if not it.SetClipEnabled(False):
+                        return None, "otro clip encima que no se pudo apartar"
+                    off.append(it)
+        tl.SetCurrentTimecode(tc(f, fps))
+        still = grab_still(tl, sleep)
+        return still, None if still else "Resolve no devolvió el still"
+    finally:
+        for it in off:
+            it.SetClipEnabled(True)
+
+
 def find_export(project, tl):
     jobs = []
     for j in project.GetRenderJobList() or []:
@@ -467,37 +499,6 @@ def gui(resolve, bmd):
             st["grabbed"] = 0
             finish()
 
-    def grab_still():
-        """GrabStill falla a veces, sobre todo el primero tras abrir la Color page (H14): hasta 4 intentos."""
-        for _ in range(4):
-            still = tl.GrabStill()
-            if still:
-                return still
-            time.sleep(0.4)
-        return None
-
-    def grab_from(s, f):
-        """Grab Still del clip del plano, sin lo que tenga encima: el still lleva quemadas las pistas superiores y la
-        API no deja elegir el clip. Se desactivan un momento los clips de las pistas de encima en ese frame y se
-        vuelven a activar pase lo que pase (H13). En la Color page `GetCurrentVideoItem()` no se entera de que se han
-        desactivado, así que no se usa para comprobarlo (H15).
-        Devuelve (still, motivo si no hay still)."""
-        track = int(s["id"].split(":")[0])
-        off = []
-        try:
-            for t in range(track + 1, n_tracks + 1):
-                for it in tl.GetItemListInTrack("video", t) or []:
-                    if it.GetStart() <= f < it.GetEnd() and it.GetClipEnabled():
-                        if not it.SetClipEnabled(False):
-                            return None, "otro clip encima que no se pudo apartar"
-                        off.append(it)
-            tl.SetCurrentTimecode(tc(f, fps))
-            still = grab_still()
-            return still, None if still else "Resolve no devolvió el still"
-        finally:
-            for it in off:
-                it.SetClipEnabled(True)
-
     def finish():
         timer.Stop()
         restore()
@@ -564,7 +565,7 @@ def gui(resolve, bmd):
             elif st["phase"] == "grab":
                 if st["queue"]:
                     s, f = st["queue"].pop(0)
-                    still, why = grab_from(s, f)
+                    still, why = grab_from(tl, int(s["id"].split(":")[0]), f, fps)
                     if still:
                         st["album"].SetLabel(still, still_label(s["name"], f, fps))
                         st["grabbed"] += 1
