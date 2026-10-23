@@ -477,26 +477,21 @@ def gui(resolve, bmd):
         return None
 
     def grab_from(s, f):
-        """Grab Still del clip del plano, no del que tenga encima: el still es del clip que está «current» en la Color
-        page y la API no deja elegirlo. Si el current es otro, se desactivan un momento los clips de las pistas de
-        encima que lo tapan en ese frame y se vuelven a activar pase lo que pase (H13).
+        """Grab Still del clip del plano, sin lo que tenga encima: el still lleva quemadas las pistas superiores y la
+        API no deja elegir el clip. Se desactivan un momento los clips de las pistas de encima en ese frame y se
+        vuelven a activar pase lo que pase (H13). En la Color page `GetCurrentVideoItem()` no se entera de que se han
+        desactivado, así que no se usa para comprobarlo (H15).
         Devuelve (still, motivo si no hay still)."""
-        tl.SetCurrentTimecode(tc(f, fps))
-        cur = tl.GetCurrentVideoItem()
-        if cur and cur.GetUniqueId() == s["uid"]:
-            still = grab_still()
-            return still, None if still else "Resolve no devolvió el still"
         track = int(s["id"].split(":")[0])
         off = []
         try:
             for t in range(track + 1, n_tracks + 1):
                 for it in tl.GetItemListInTrack("video", t) or []:
-                    if it.GetStart() <= f < it.GetEnd() and it.GetClipEnabled() and it.SetClipEnabled(False):
+                    if it.GetStart() <= f < it.GetEnd() and it.GetClipEnabled():
+                        if not it.SetClipEnabled(False):
+                            return None, "otro clip encima que no se pudo apartar"
                         off.append(it)
             tl.SetCurrentTimecode(tc(f, fps))
-            cur = tl.GetCurrentVideoItem()
-            if not (cur and cur.GetUniqueId() == s["uid"]):
-                return None, "otro clip encima que no se pudo apartar"
             still = grab_still()
             return still, None if still else "Resolve no devolvió el still"
         finally:

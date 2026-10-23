@@ -4,6 +4,9 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado
 
 ## [Unreleased]
 
+### Corregido
+- Los planos con gráficos o textos encima se quedaban sin still: en la Color page Resolve no avisa de que los clips de encima se han desactivado y el script se rendía sin intentarlo. Ahora siempre los aparta un momento y saca el still limpio (H15).
+
 ## [0.1.0] - 2026-10-22
 Primera versión, aprobada por el owner tras probarla en Resolve Studio 21.1: elige de 0 a X stills por plano analizando el último export del timeline (o por muestreo), los marca en el timeline y/o los añade a la Gallery.
 
