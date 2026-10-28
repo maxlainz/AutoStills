@@ -27,8 +27,9 @@ from . import __version__, faces, metrics, select
 CHEAP = ("sharp", "still", "exposure", "focus_stable", "tonal", "skin", "representative")
 
 
-def analyse_shot(frames, images, preset="gallery", min_n=0, max_n=3, aesthetics=False):
-    """`frames`: frames de timeline en orden; `images`: función frame → imagen BGR a resolución completa.
+def analyse_shot(frames, images, preset="gallery", min_n=0, max_n=3, aesthetics=False, span=None):
+    """`frames`: frames de timeline en orden; `images`: función frame → imagen BGR a resolución completa;
+    `span`: (inicio, fin exclusivo) del plano, para medir los bordes en frames (H17).
     Devuelve hasta `max_n` stills, uno por encuadre distinto (D19); el descarte por calidad lo hace run()."""
     weights = select.PRESETS[preset]
     mets, prev, readable = [], None, []
@@ -43,22 +44,24 @@ def analyse_shot(frames, images, preset="gallery", min_n=0, max_n=3, aesthetics=
     frames = readable
     if not frames:
         return {"analysed": 0, "flags": ["sin_frames"], "picks": []}
-    feats, ok = select.cheap_features(mets)
+    feats, ok = select.cheap_features(mets, frames, span)
     idx = [i for i, v in enumerate(ok) if v]
     cheap_w = {k: w for k, w in weights.items() if k in CHEAP}
     cheap = select.score([feats[i] for i in idx], cheap_w)
     by_frame = dict(zip(idx, cheap))
-    segs = select.framings(select.camera_poses(mets), ok)
+    segs = select.framings(select.camera_poses(mets), ok, frames)
     per_seg = max(2, -(-max(select.CANDIDATES, max_n) // len(segs)))
     cand = []
     for seg in segs:  # candidatos de cada encuadre, para que un encuadre corto no se quede sin representante
         cand += [seg[j] for j in select.pick([frames[i] for i in seg], [by_frame[i] for i in seg],
                                              [mets[i]["thumb"] for i in seg], per_seg)]
-    any_face = False
+    any_face, vision_err = False, None
     for i in cand:
         img = images(frames[i])
         a = faces.analyze(img, aesthetics=aesthetics) if faces.available() else {"faces": []}
-        box = max(a["faces"], key=lambda f: f["box"][2] * f["box"][3])["box"] if a.get("faces") else None
+        vision_err = vision_err or a.get("error")
+        face = select.main_face(a)
+        box = face["box"] if face else None
         any_face |= box is not None
         face_sharp = metrics.sharpness(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), box) if box else None
         feats[i] = {**feats[i], **select.face_features(a, face_sharp)}
@@ -74,6 +77,8 @@ def analyse_shot(frames, images, preset="gallery", min_n=0, max_n=3, aesthetics=
         flags.append("sin_vision")
     if len(frames) < 3:
         flags.append("plano_corto")
+    if vision_err:
+        flags.append(f"error_vision:{vision_err}")
     if lost:
         flags.append(f"frames_ilegibles:{lost}")
     return {"analysed": len(frames), "flags": flags, "framings": len(segs),
@@ -154,7 +159,7 @@ def run(job):
     for k, (s, fr, images) in enumerate((x for g in gens for x in g), 1):
         try:
             res = analyse_shot(fr, images, job.get("preset", "gallery"), job.get("min", 0), job.get("max", 3),
-                               job.get("aesthetics", False))
+                               job.get("aesthetics", False), (s["start"], s["end"]))
         except Exception as e:  # un plano raro no se lleva por delante el resto del timeline
             res = {"analysed": 0, "flags": [f"error:{type(e).__name__}: {e}"], "picks": []}
         out.append({"id": s["id"], **res})

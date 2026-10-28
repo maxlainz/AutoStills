@@ -5,6 +5,11 @@ Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado
 ## [Unreleased]
 
 ### Corregido
+- Las caras no se detectaban en macOS 27 y nadie se enteraba: Apple Vision rechazaba las opciones y el error se perdía. Arreglado, y si Vision vuelve a fallar el plano lo dice (`error_vision`) (H16).
+- Muestreo desde el timeline: de 12 frames leídos solo se usaban 10, y un plano muestreado nunca daba más de un still aunque la cámara cambiara de encuadre. Ahora los bordes y los encuadres se miden en frames, no en muestras (H17).
+- Un clip de vídeo de una pista sin marcar (B-roll) tapa al plano de debajo; antes se puntuaba el B-roll y se sacaba el still de abajo. Los PNG de logos y textos siguen sin tapar. Con «Clips seleccionados», los no seleccionados también tapan (D25).
+- La ventana ya no da `FileNotFoundError` si el export desaparece (volumen desmontado) con la ventana abierta.
+- Mientras se comprueba el export se ve el porcentaje.
 - Los planos con gráficos o textos encima se quedaban sin still: en la Color page Resolve no avisa de que los clips de encima se han desactivado y el script se rendía sin intentarlo. Ahora siempre los aparta un momento y saca el still limpio (H15).
 
 ## [0.1.0] - 2026-10-22

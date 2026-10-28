@@ -200,3 +200,20 @@ def test_framings_two_segments_last_short():
     # el caso real (bitácora 03): un pull-back a escala 0,57 en ~4 s y luego quieto → dos encuadres
     pull = [(1.0 - 0.43 * min(i / 100, 1), 0.0, 0.0) for i in range(1253)]
     assert len(select.framings(pull, [True] * 1253)) == 2
+
+
+def test_sampled_shot_keeps_its_samples_and_framings():
+    # H17: en el muestreo los bordes ya están fuera y los encuadres se miden en frames, no en muestras
+    lumas = [{"luma": 0.4}] * 12
+    sampled = [10 + 7 * i for i in range(12)]  # como sample_frames(0, 100)
+    assert all(select.valid_mask(lumas, sampled, (0, 100)))
+    poses = [(1.0, 0.0, 0.0)] * 6 + [(2.0, 0.0, 0.0)] * 6  # la cámara se acerca entre la muestra 5 y la 6
+    assert len(select.framings(poses, [True] * 12, sampled)) == 2
+    assert len(select.framings(poses, [True] * 12)) == 1  # contando muestras como frames, era uno solo
+
+
+def test_vision_error_is_flagged(monkeypatch):
+    monkeypatch.setattr(worker.faces, "available", lambda: True)
+    monkeypatch.setattr(worker.faces, "analyze", lambda img, aesthetics=False: {"faces": [], "error": "Boom: x"})
+    res = worker.analyse_shot(list(range(20)), lambda f: PATTERN)
+    assert "error_vision:Boom: x" in res["flags"]

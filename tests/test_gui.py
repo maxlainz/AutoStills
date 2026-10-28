@@ -188,3 +188,59 @@ def test_grab_from_restores_clips_on_error():
     except RuntimeError:
         pass
     assert logo.enabled
+
+
+def test_cover_items_cover_but_are_not_shots():
+    cover = dict(item(2, 30, 50, "b"), cover=True)  # pista sin marcar o fuera de la selección (D25)
+    shots = A.visible_shots([item(1, 0, 100, "a"), cover])
+    assert [(s["path"], s["start"], s["end"]) for s in shots] == [("a", 50, 100)]
+
+
+class FakeMPI:
+    def __init__(self, typ):
+        self.typ = typ
+
+    def GetClipProperty(self, key):
+        return {"File Path": "/r/x", "Type": self.typ}[key]
+
+
+class FakeTLItem(FakeItem):
+    def __init__(self, uid, start, end, typ="Video"):
+        super().__init__(start, end)
+        self.uid, self.mpi = uid, FakeMPI(typ)
+
+    def GetMediaPoolItem(self):
+        return self.mpi
+
+    def GetUniqueId(self):
+        return self.uid
+
+    def GetName(self):
+        return self.uid
+
+    def GetLeftOffset(self):
+        return 0
+
+
+class FakeReadTimeline(FakeTimeline):
+    def __init__(self, tracks, selected=()):
+        super().__init__(tracks)
+        self.selected = selected
+
+    def GetSelectedClips(self):
+        return [it for tr in self.tracks for it in tr if it.uid in self.selected]
+
+
+def test_read_items_unchecked_video_covers_still_does_not():
+    tl = FakeReadTimeline([[FakeTLItem("int", 0, 500)], [FakeTLItem("broll", 50, 400)],
+                           [FakeTLItem("logo", 0, 500, "Still")]])
+    items = {i["uid"]: i["cover"] for i in A.read_items(tl, [1])}
+    assert items == {"int": False, "broll": True}  # el B-roll tapa; el PNG del logo no (Grab Still lo aparta)
+    shots = A.visible_shots(A.read_items(tl, [1]))
+    assert [(s["start"], s["end"]) for s in shots] == [(400, 500)]
+
+
+def test_read_items_selection_only_limits_shots():
+    tl = FakeReadTimeline([[FakeTLItem("a", 0, 100)], [FakeTLItem("b", 0, 30)]], selected={"a"})
+    shots = A.visible_shots(A.read_items(tl, [1, 2], only_selected=True))
+    assert [(s["uid"], s["start"], s["end"]) for s in shots] == [("a", 30, 100)]  # b no se eligió pero sigue tapando
