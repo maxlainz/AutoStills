@@ -54,10 +54,14 @@ def rank(values):
     return out
 
 
-def valid_mask(metrics):
-    """Criterio 5: bordes del plano, frames negros y flashes/fundidos fuera. Si no queda nada, se usan todos."""
+def valid_mask(metrics, frames=None, span=None):
+    """Criterio 5: bordes del plano, frames negros y flashes/fundidos fuera. Si no queda nada, se usan todos.
+    `frames`: frame de timeline de cada métrica; `span`: (inicio, fin exclusivo) del plano. El borde se mide en frames,
+    no en muestras: en el muestreo la GUI ya los ha dejado fuera (H17)."""
     n = len(metrics)
-    edge = min(int(n * EDGE), EDGE_MAX)
+    frames = list(range(n)) if frames is None else frames
+    start, end = span or ((frames[0], frames[-1] + 1) if frames else (0, 0))
+    edge = min(int((end - start) * EDGE), EDGE_MAX)
     lumas = [m["luma"] for m in metrics]
     med = float(np.median(lumas))
 
@@ -68,13 +72,13 @@ def valid_mask(metrics):
             return abs(lumas[i] - (a + b) / 2) > 0.08 and abs(a - b) < 0.04
         return False
 
-    ok = [edge <= i < n - edge and not spike(i) and not (med > 0.1 and lumas[i] < 0.02) for i in range(n)]
+    ok = [start + edge <= frames[i] < end - edge and not spike(i) and not (med > 0.1 and lumas[i] < 0.02) for i in range(n)]
     return ok if any(ok) else [True] * n
 
 
-def cheap_features(metrics):
+def cheap_features(metrics, frames=None, span=None):
     """Rasgos de la primera pasada, ya rankeados dentro del plano (solo sobre los frames válidos)."""
-    ok = valid_mask(metrics)
+    ok = valid_mask(metrics, frames, span)
     sel = [m if v else None for m, v in zip(metrics, ok)]
     sharp = [m["sharp"] if m else None for m in sel]
     # criterio 4 (rack focus): se prefiere donde la nitidez ya se ha asentado, no donde cambia
@@ -105,9 +109,8 @@ def face_features(analysis, face_sharp=None):
     out = {"no_text": None if text is None else 1 - min(text / 0.05, 1.0),  # 5 % del cuadro con texto = 0
            "aesthetic": None if aes is None else (aes + 1) / 2,           # Vision da −1..1
            "composition": _composition(analysis.get("saliency_box"))}
-    faces = analysis.get("faces") or []
-    if faces:
-        f = max(faces, key=lambda f: f["box"][2] * f["box"][3])  # la cara principal es la más grande
+    f = main_face(analysis)
+    if f:
         mouth, yaw = f.get("mouth_open"), f.get("yaw")
         out.update({
             "face_present": 1.0,
@@ -121,6 +124,11 @@ def face_features(analysis, face_sharp=None):
             "face_complete": 0.0 if f.get("cut") else 1.0,
         })
     return out
+
+
+def main_face(analysis):
+    """La cara principal es la más grande; None si no hay caras."""
+    return max(analysis.get("faces") or [], key=lambda f: f["box"][2] * f["box"][3], default=None)
 
 
 def _composition(box):
@@ -179,25 +187,30 @@ def camera_poses(metrics):
     return out
 
 
-def framings(poses, ok):
+def framings(poses, ok, frames=None):
     """D19: tramos de encuadre a lo largo del plano, según lo que se mueve la cámara (no lo que pasa dentro del cuadro).
     Un tramo nuevo empieza cuando la cámara se ha acercado/alejado o desplazado lo bastante respecto al primer frame
-    del tramo. Un tramo demasiado corto (un barrido) se une al anterior."""
+    del tramo. Un tramo demasiado corto (un barrido) se une al anterior. Las longitudes van en frames de timeline, no
+    en muestras (H17): `frames` da el frame de cada pose."""
+    frames = list(range(len(poses))) if frames is None else frames
     idx = [i for i, v in enumerate(ok) if v]
-    min_len = MIN_FRAMING
+
+    def short(seg):
+        return frames[seg[-1]] - frames[seg[0]] + 1 < MIN_FRAMING
+
     segs = []
     for i in idx:
         if segs:
-            if _same_pose(poses[segs[-1][0]], poses[i]) or len(segs[-1]) < min_len:
+            if _same_pose(poses[segs[-1][0]], poses[i]) or short(segs[-1]):
                 segs[-1].append(i)
                 continue
         segs.append([i])
-    if len(segs) > 1 and len(segs[-1]) < min_len:
+    if len(segs) > 1 and short(segs[-1]):
         last = segs.pop()  # no `segs[-2] += segs.pop()`: la lista encoge antes de asignar (bitácora 03)
         segs[-1] += last
     # un tramo intermedio en el que la cámara está casi todo el rato moviéndose es el movimiento, no un encuadre: se une
     # al siguiente. El primero y el último se quedan: son el punto de partida y el de llegada del movimiento.
-    moving = _moving(poses)
+    moving = _moving(poses, frames)
     still = []
     for k, seg in enumerate(segs):
         if 0 < k < len(segs) - 1 and sum(moving[i] for i in seg) > len(seg) / 2:
@@ -215,12 +228,13 @@ def framings(poses, ok):
     return merged
 
 
-def _moving(poses, k=3):
+def _moving(poses, frames, k=3):
     """Frames en los que la cámara se mueve lo bastante como para cambiar de encuadre en menos de ~2 s."""
     out = []
     for i in range(len(poses)):
-        a, b = poses[max(0, i - k)], poses[min(len(poses) - 1, i + k)]
-        n = max(1, min(len(poses) - 1, i + k) - max(0, i - k))
+        lo, hi = max(0, i - k), min(len(poses) - 1, i + k)
+        a, b = poses[lo], poses[hi]
+        n = max(1, frames[hi] - frames[lo])
         out.append(abs(np.log(b[0] / a[0])) / n > np.log(FRAMING_SCALE) / 50
                    or np.hypot(b[1] - a[1], b[2] - a[2]) / n > FRAMING_SHIFT / 50)
     return out

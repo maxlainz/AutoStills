@@ -9,8 +9,8 @@ setup:        # instala dependencias de desarrollo en .venv (uv sync)
 lint:         # ruff sobre todo el repo (norma ci.md)
 	@uv run ruff check .
 
-test:         # pytest; sin tests todavía no falla (exit 5 = no hay tests)
-	@uv run pytest || [ $$? -eq 5 ]
+test:         # pytest
+	@uv run pytest
 
 leak-check:   # nada del estudio en el repo (norma repo-publico.md)
 	@sh scripts/leak-check.sh

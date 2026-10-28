@@ -44,7 +44,8 @@ def _subtract(seg, covers):
 
 
 def visible_shots(items, marker_color=None, tl_markers=None):
-    """`items`: clips con media de las pistas elegidas, dicts {track, start, end, name, path, src, uid}.
+    """`items`: clips con media, dicts {track, start, end, name, path, src, uid, cover}. Los que llevan `cover` (pista
+    sin marcar o fuera de la selección) tapan a los de debajo pero no son planos (D25).
     `tl_markers`: marcadores del timeline {frame absoluto: color} (D23: van en el timeline, no en el clip).
     La pista de encima tapa a la de abajo (es lo que sale en el render); de cada clip se queda su tramo visible más
     largo. Criterio 19: un clip que repite media ya usada (mismo fichero, más de la mitad del rango fuente solapado)
@@ -52,6 +53,8 @@ def visible_shots(items, marker_color=None, tl_markers=None):
     Criterio 17 / D20: los marcadores del color elegido dentro del tramo son los stills del plano (no se analiza)."""
     shots = []
     for it in sorted(items, key=lambda i: (i["start"], -i["track"])):
+        if it.get("cover"):
+            continue
         covers = [(o["start"], o["end"]) for o in items if o["track"] > it["track"]
                   and o["start"] < it["end"] and o["end"] > it["start"]]
         segs = _subtract((it["start"], it["end"]), covers)
@@ -129,6 +132,13 @@ def mov_start_frame(path):
     return None
 
 
+def first_frame(path, fps, tl_start, start=mov_start_frame):
+    """Frame de timeline del frame 0 del export: su timecode si es del mismo fps; si no, el inicio del timeline (la
+    comprobación lo confirma o no)."""
+    tcf = start(path)
+    return tcf[0] if tcf and tcf[1] == round(float(fps)) else tl_start
+
+
 def pick_export(jobs, tl_name, tl_start, fps, locate=find_file, mtime=os.path.getmtime, start=mov_start_frame):
     """D17: el último export de este timeline en la cola de render → (ruta, frame de timeline del frame 0 del fichero).
     No hace falta que cubra todo el timeline: los planos que caigan fuera no cuadran en la comprobación y se muestrean."""
@@ -139,10 +149,7 @@ def pick_export(jobs, tl_name, tl_start, fps, locate=find_file, mtime=os.path.ge
             continue
         path = locate(j.get("TargetDir"), j.get("OutputFilename"))
         if path and (best is None or mtime(path) > best[2]):
-            tcf = start(path)
-            # sin timecode legible se supone que empieza al inicio del timeline; la comprobación lo confirma o no
-            first = tcf[0] if tcf and tcf[1] == round(float(fps)) else tl_start
-            best = (path, first, mtime(path))
+            best = (path, first_frame(path, fps, tl_start, start), mtime(path))
     return best[:2] if best else None
 
 
@@ -185,21 +192,24 @@ def save_settings(values, path=SETTINGS):
 # ---------------------------------------------------------------- Resolve
 
 def read_items(tl, tracks, only_selected=False):
-    """Clips con media de las pistas elegidas → (dicts para visible_shots, {uid: TimelineItem})."""
+    """Clips con media de todas las pistas de vídeo → dicts para visible_shots. Los de las pistas elegidas (y de la
+    selección) son planos; el resto solo tapa (`cover`). En una pista sin marcar, un fotograma fijo (PNG de logo o
+    texto) ni siquiera tapa: Grab Still lo aparta igual (H13, H15); un clip de vídeo sí, porque es lo que se ve (D25)."""
     sel = {c.GetUniqueId() for c in (tl.GetSelectedClips() or [])} if only_selected else None
-    out, objs = [], {}
-    for t in tracks:
+    out = []
+    for t in range(1, int(tl.GetTrackCount("video") or 1) + 1):
         for it in tl.GetItemListInTrack("video", t) or []:
             mpi = it.GetMediaPoolItem()
             path = mpi.GetClipProperty("File Path") if mpi else ""
             # criterio 20: títulos, generadores y compuestos sin media no son planos
-            if not path or not it.GetClipEnabled() or (sel is not None and it.GetUniqueId() not in sel):
+            if not path or not it.GetClipEnabled():
+                continue
+            if t not in tracks and "Video" not in (mpi.GetClipProperty("Type") or ""):
                 continue
             uid = it.GetUniqueId()
-            objs[uid] = it
             out.append({"track": t, "start": it.GetStart(), "end": it.GetEnd(), "name": it.GetName(), "path": path,
-                        "src": it.GetLeftOffset(), "uid": uid})
-    return out, objs
+                        "src": it.GetLeftOffset(), "uid": uid, "cover": t not in tracks or (sel is not None and uid not in sel)})
+    return out
 
 
 def read_tl_markers(tl):
@@ -339,11 +349,11 @@ def gui(resolve, bmd):
         itm["Summary"].PlainText = "\n".join(st["log"])
 
     def refresh(ev=None):
-        shots = visible_shots(read_items(tl, tracks())[0], color(), read_tl_markers(tl))
+        shots = visible_shots(read_items(tl, tracks()), color(), read_tl_markers(tl))
         marked = sum(1 for s in shots if s["markers"])
         itm["Head"].Text = (f"Timeline: {tl.GetName()} · {len(shots)} planos en " + ", ".join(f"V{t}" for t in tracks())
                             + (f" · {marked} ya con marcadores {color()}" if marked else ""))
-        exp = st["export"]
+        exp = st["export"] if st["export"] and os.path.exists(st["export"][0]) else None  # p. ej. volumen desmontado
         # un nombre de fichero no tiene espacios y no salta de línea: se acorta y el completo va en el tooltip
         itm["ExportInfo"].Text = (f"Export: {elide(os.path.basename(exp[0]))} · "
                                   f"{datetime.fromtimestamp(os.path.getmtime(exp[0])):%d/%m %H:%M} ✓" if exp
@@ -368,8 +378,7 @@ def gui(resolve, bmd):
     def browse(ev):
         p = fu.RequestFile(os.path.expanduser("~"))
         if p:
-            tcf = mov_start_frame(str(p))
-            st["export"] = (str(p), tcf[0] if tcf and tcf[1] == round(float(fps)) else tl.GetStartFrame())
+            st["export"] = (str(p), first_frame(str(p), fps, tl.GetStartFrame()))
             refresh()
 
     def busy(on):
@@ -399,9 +408,10 @@ def gui(resolve, bmd):
             json.dump(job, fh)
         env = {k: v for k, v in os.environ.items() if not k.startswith("PYTHON")}  # que no herede el Python de Resolve
         env["PYTHONUTF8"] = "1"  # rutas con acentos aunque Resolve lance el proceso sin locale (bitácora 03)
-        st["proc"] = subprocess.Popen([python, "-m", "autostills.worker", jp, rp], cwd=os.path.join(HOME_DIR, "app"),
-                                      stdout=open(pp, "w", encoding="utf-8"),
-                                      stderr=open(pp + ".err", "w", encoding="utf-8"), env=env)
+        # el hijo hereda sus propias copias de los ficheros: aquí se cierran al salir del with
+        with open(pp, "w", encoding="utf-8") as out, open(pp + ".err", "w", encoding="utf-8") as err:
+            st["proc"] = subprocess.Popen([python, "-m", "autostills.worker", jp, rp],
+                                          cwd=os.path.join(HOME_DIR, "app"), stdout=out, stderr=err, env=env)
         st.update(phase="worker", after=then, files=(rp, pp))
 
     def export_frames(frames, then, label):
@@ -412,7 +422,7 @@ def gui(resolve, bmd):
         st["log"] = []
         st.pop("missed", None)
         respect = itm["Respect"].Checked
-        items, st["objs"] = read_items(tl, tracks(), itm["Scope"].CurrentIndex == 1)
+        items = read_items(tl, tracks(), itm["Scope"].CurrentIndex == 1)
         shots = visible_shots(items, color() if respect else None, read_tl_markers(tl))
         if not shots:
             return say("No hay planos con media en las pistas elegidas.")
@@ -548,7 +558,7 @@ def gui(resolve, bmd):
                         last = [x for x in fh.read().splitlines() if x.strip()][-1:]
                     if last:
                         p = json.loads(last[0])
-                        step(st["steps"][0] if "diff" in last[0] else "Analizar", f"{int(p['progress'] * 100)} %")
+                        step(st["label"], f"{int(p['progress'] * 100)} %")
                 except (OSError, ValueError, KeyError):
                     pass
                 code = st["proc"].poll()

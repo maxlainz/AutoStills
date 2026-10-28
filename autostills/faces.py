@@ -13,7 +13,7 @@ import numpy as np
 try:
     import objc
     import Vision
-    from Foundation import NSData
+    from Foundation import NSData, NSDictionary
 except ImportError:  # Linux / sin pyobjc
     Vision = None
 
@@ -96,7 +96,9 @@ def analyze(img_bgr, aesthetics=False):
             ok, buf = cv2.imencode(".bmp", img_bgr)  # BMP: sin compresión, lo más rápido de codificar
             if not ok:
                 return out
-            handler = Vision.VNImageRequestHandler.alloc().initWithData_options_(NSData.dataWithBytes_length_(buf, len(buf)), {})
+            # H16: opciones como NSDictionary; con un `{}` de Python, macOS 27 lanza «key does not exist»
+            handler = Vision.VNImageRequestHandler.alloc().initWithData_options_(
+                NSData.dataWithBytes_length_(buf, len(buf)), NSDictionary.dictionary())
             landmarks = Vision.VNDetectFaceLandmarksRequest.alloc().init()
             saliency = Vision.VNGenerateAttentionBasedSaliencyImageRequest.alloc().init()
             text = Vision.VNDetectTextRectanglesRequest.alloc().init()
@@ -134,8 +136,6 @@ def analyze(img_bgr, aesthetics=False):
                     "eyes_open": eyes,
                     "mouth_open": mouth,
                     "yaw": _angle(o.yaw()),
-                    "pitch": _angle(o.pitch()) if hasattr(o, "pitch") else None,
-                    "roll": _angle(o.roll()),
                     "cut": is_cut(box),
                 })
 
@@ -158,6 +158,6 @@ def analyze(img_bgr, aesthetics=False):
                     # una caja que asoma por arriba o por la izquierda daría un índice negativo: se recorta a 0
                     mask[max(0, int(y * h)):int(math.ceil((y + bh) * h)), max(0, int(x * w)):int(math.ceil((x + bw) * w))] = 1
                 out["text_fraction"] = float(mask.mean())
-    except Exception:  # un frame raro no puede tumbar el análisis de un timeline entero
-        pass
+    except Exception as e:  # un frame raro no puede tumbar el análisis de un timeline entero, pero se avisa (H16)
+        out["error"] = f"{type(e).__name__}: {e}"
     return out

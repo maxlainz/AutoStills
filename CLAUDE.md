@@ -9,7 +9,7 @@ Script para **DaVinci Resolve Studio** que elige y captura automáticamente el m
 CLAUDE.md              este router
 .claude/rules/         normas (una por archivo)        .claude/skills/   release · obsidian-vault
 .claude/settings.json  hooks: pull + issues al arrancar · bloqueo de rutas al escribir · bloqueo de commit en main · push al cerrar
-docs/decisiones.md     ADRs D1–D24                      docs/bitacora/    una entrada por sesión (00 arranque · 01 medida · 02 worker · 03 prueba en Resolve · 04 v0.1.0 · 05 grab still de planos tapados)
+docs/decisiones.md     ADRs D1–D25                      docs/bitacora/    una entrada por sesión (00 arranque · 01 medida · 02 worker · 03 prueba en Resolve · 04 v0.1.0 · 05 grab still de planos tapados · 06 auditoría)
 docs/investigacion.md  API de Resolve, caminos para obtener frames, señales, precedentes, stack candidato, JEV
 docs/criterios.md      los 20 criterios de selección, cómo medirlos y presets
 docs/roadmap.md        versiones previstas
@@ -60,6 +60,7 @@ make ci      # leak-check + lint + test — el gate de cada commit
 ## Estado y siguiente paso
 - **Estado (2026-10-22, bitácora 04)**: **v0.1.0 publicada** y aprobada por el owner tras probarla en Resolve. Incluye la ventana v2 (D18–D24), el worker con dos pasadas y encuadres por movimiento de cámara (H11), el último export como fuente (D17, H6–H8) y Grab Still robusto (H13, H14). 39 tests.
 - **2026-10-23, bitácora 05**: arreglado el Grab Still de planos tapados (H15), pendiente de release. `grab_still`/`grab_from` salen de la ventana al nivel del módulo y se prueban con un timeline falso: 44 tests.
+- **2026-10-28, bitácora 06**: auditoría. Vision vuelve a detectar caras en macOS 27 (H16); el muestreo mide en frames (H17); los clips de vídeo de pistas sin marcar tapan (D25). 49 tests. Pendiente de release y de comprobar D25 en Resolve.
 - **Después**: prueba de pesos con los marcadores del owner (los umbrales y los pesos son a ojo); calibrar el umbral de la comprobación del export; explorar JEV sobre la preselección (D16).
 
 ## Pendiente del owner (2026-10-22)

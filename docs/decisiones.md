@@ -138,5 +138,11 @@ Una entrada por decisión: contexto, opciones, elección, fecha. Nunca se borra 
 - **Elección**: **«0090217 · 01:00:08:17 · CLIP»**: el frame absoluto del timeline con 7 cifras (orden alfabético = orden de la peli en cualquier herramienta), luego el REC TC y el clip. Para stills y marcadores.
 - 2026-10-22.
 
+## D25 — Qué tapa a un plano: también las pistas sin marcar, salvo los fotogramas fijos
+- **Contexto**: auditoría del 2026-10-28. Solo tapaban los clips de las pistas marcadas. Con una entrevista en V1 y B-roll en V2 sin marcar, se puntuaba el B-roll (es lo que sale en el export y en los frames de Resolve) y después Grab Still apagaba V2 y sacaba la entrevista en un frame que nadie había mirado. Con logos y textos en PNG (bitácora 05) sí interesa que no tapen.
+- **Opciones**: (a) como estaba; (b) todo clip con media tapa; (c) un clip de vídeo de una pista sin marcar tapa, un fotograma fijo no.
+- **Elección**: **(c)**, la recomendación de la auditoría, aceptada por el owner («fix all»). Se distingue por la propiedad `Type` del clip del Media Pool (tapa si contiene «Video»). Con «Clips seleccionados», los no seleccionados también tapan. Pendiente de comprobar en Resolve qué `Type` da un PNG.
+- 2026-10-28.
+
 ## Pendientes
 - Pesos de cada preset (D6) y frames muestreados por plano: con una prueba contra stills elegidos por el owner.
